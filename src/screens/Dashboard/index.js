@@ -22,7 +22,7 @@ import Footer from '../../components/Footer';
 import styles from './styles';
 
 export default function Dashboard({ navigation }) {
-  const { lists, items, addList, importList, removeList, finishList, updateListName } = useCartStore();
+  const { lists, items, addList, importList, removeList, updateListName } = useCartStore();
   const isFocused = useIsFocused();
   
   const [modalVisible, setModalVisible] = useState(false);
@@ -34,7 +34,6 @@ export default function Dashboard({ navigation }) {
   const [importCode, setImportCode] = useState('');
   const [isPremium, setIsPremium] = useState(false);
 
-  // Verificação de Status Premium
   const checkPremiumStatus = async () => {
     try {
       const customerInfo = await Purchases.getCustomerInfo();
@@ -140,53 +139,73 @@ export default function Dashboard({ navigation }) {
           <View style={styles.header}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
-                <Image source={require('../../assets/logo.png')} style={{ width: 100, height: 40, marginBottom: 5 }} resizeMode="contain" />
+                <Image source={require('../../assets/logo.png')} style={{ width: 85, height: 35, marginBottom: 2 }} resizeMode="contain" />
                 
-                {/* TICKER PREMIUM RESTAURADO */}
                 <TouchableOpacity 
                   onPress={() => navigation.navigate('Premium')}
                   style={{ 
                     flexDirection: 'row', 
                     alignItems: 'center', 
-                    backgroundColor: isPremium ? 'rgba(255, 215, 0, 0.6)' : '#F1F5F9',
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: 8,
+                    backgroundColor: isPremium ? 'rgba(255, 215, 0, 0.2)' : '#F1F5F9',
+                    paddingHorizontal: 6,
+                    paddingVertical: 3,
+                    borderRadius: 6,
                     alignSelf: 'flex-start',
-                    marginTop: 4
+                    marginTop: 2,
+                    borderWidth: isPremium ? 0.5 : 0,
+                    borderColor: '#dd0'
                   }}
                 >
-                  <Text style={{ fontSize: 10, marginRight: 5 }}>{isPremium ? '👑' : '⚪'}</Text>
+                  <Text style={{ fontSize: 9, marginRight: 3 }}>{isPremium ? '👑' : '⚪'}</Text>
                   <Text style={{ 
-                    fontSize: 10, 
+                    fontSize: 8, 
                     fontWeight: '900', 
-                    color: isPremium ? '#B8860B' : '#64748B' 
+                    color: isPremium ? '#505700' : '#64748B' 
                   }}>
-                    {isPremium ? 'ASSINATURA PRO ATIVA' : 'VERSÃO GRATUITA'}
+                    {isPremium ? 'ASSINATURA PRO' : 'VERSÃO GRATUITA'}
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <View style={{ 
+                flexDirection: 'row', 
+                backgroundColor: '#FFF', 
+                padding: 4, 
+                borderRadius: 14,
+                gap: 4,
+                alignItems: 'center',
+                elevation: 1,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 2
+              }}>
                 <TouchableOpacity 
                   onPress={() => navigation.navigate('ScanReceipt')} 
-                  style={{ backgroundColor: '#F1F5F9', width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                  style={{ width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Text style={{ fontSize: 18 }}>📷</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
+                  onPress={() => navigation.navigate('Backup')} 
+                  style={{ width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: isPremium ? '#E8F7F0' : 'transparent' }}
+                >
+                  <Text style={{ fontSize: 18 }}>☁️</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
                   onPress={() => navigation.navigate('History')} 
-                  style={{ backgroundColor: '#F1F5F9', width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                  style={{ width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Text style={{ fontSize: 18 }}>🕒</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
                   onPress={() => setImportModalVisible(true)} 
-                  style={{ backgroundColor: '#1A1C2E', height: 42, paddingHorizontal: 15, borderRadius: 12, justifyContent: 'center' }}
+                  style={{ backgroundColor: '#1A1C2E', width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#FFF' }}>IMPORTAR</Text>
+                  <Text style={{ fontSize: 16 }}>📥</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -241,7 +260,6 @@ export default function Dashboard({ navigation }) {
         </TouchableOpacity>
         <Footer />
 
-        {/* MODAL NOVA LISTA */}
         <Modal visible={modalVisible} transparent animationType="slide">
           <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
             <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(26, 28, 46, 0.8)' }}>
@@ -266,7 +284,6 @@ export default function Dashboard({ navigation }) {
           </TouchableWithoutFeedback>
         </Modal>
 
-        {/* MODAL EDITAR NOME */}
         <Modal visible={editModalVisible} transparent animationType="fade">
           <TouchableWithoutFeedback onPress={() => setEditModalVisible(false)}>
             <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(26, 28, 46, 0.8)', padding: 20 }}>
@@ -288,7 +305,6 @@ export default function Dashboard({ navigation }) {
           </TouchableWithoutFeedback>
         </Modal>
 
-        {/* MODAL IMPORTAR */}
         <Modal visible={importModalVisible} transparent animationType="fade">
           <TouchableWithoutFeedback onPress={() => setImportModalVisible(false)}>
             <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(26, 28, 46, 0.8)' }}>

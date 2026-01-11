@@ -8,7 +8,6 @@ import Footer from '../../components/Footer';
 import styles from './styles';
 
 export default function History({ navigation }) {
-  // Garantimos que history seja sempre um array para evitar o erro de .length
   const { history = [], clearHistory, deleteHistoryEntry, duplicateFromHistory } = useCartStore();
 
   const onSwipeOpen = () => {
@@ -76,6 +75,28 @@ export default function History({ navigation }) {
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Backup')}
+              style={{ 
+                backgroundColor: '#1A1C2E', 
+                padding: 15, 
+                borderRadius: 15, 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                marginBottom: 20
+              }}
+            >
+              <Text style={{ fontSize: 20, marginRight: 12 }}>☁️</Text>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>Sincronizar Histórico</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10 }} numberOfLines={1}>Proteja seus dados na nuvem</Text>
+              </View>
+              <View style={{ backgroundColor: 'rgba(70, 198, 142, 0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                <Text style={{ color: '#46C68E', fontWeight: '900', fontSize: 9 }}>VER BACKUP</Text>
+              </View>
+            </TouchableOpacity>
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>📁</Text>

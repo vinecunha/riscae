@@ -5,8 +5,8 @@ import {
   ActivityIndicator, Alert, TouchableWithoutFeedback 
 } from 'react-native';
 import * as Location from 'expo-location';
-import Purchases from 'react-native-purchases'; // Importado
-import { useIsFocused } from '@react-navigation/native'; // Importado
+import Purchases from 'react-native-purchases';
+import { useIsFocused } from '@react-navigation/native';
 import { supabase } from '../../services/supabase'; 
 import { useCartStore } from '../../store/cartStore';
 import ShoppingItem from '../../components/ShoppingItem';
@@ -29,9 +29,8 @@ export default function ShoppingList({ route, navigation }) {
   const [isLoadingMarkets, setIsLoadingMarkets] = useState(false);
   const [bestPrices, setBestPrices] = useState({});
   const [suggestions, setSuggestions] = useState([]);
-  const [isPremium, setIsPremium] = useState(false); // Estado local controlado pelo RevenueCat
+  const [isPremium, setIsPremium] = useState(false);
 
-  // Verificação de Status Premium Real
   const checkPremiumStatus = async () => {
     try {
       const customerInfo = await Purchases.getCustomerInfo();
@@ -54,7 +53,7 @@ export default function ShoppingList({ route, navigation }) {
     if (filteredItems.length > 0) {
       fetchComparisons();
     }
-  }, [filteredItems.length]);
+  }, [filteredItems.length, items]);
 
   const formatUpdateDate = (dateString) => {
     if (!dateString) return '--';
@@ -134,6 +133,7 @@ export default function ShoppingList({ route, navigation }) {
 
   const fetchComparisons = async () => {
     const itemNames = filteredItems.map(i => i.name.toLowerCase().trim());
+    if (itemNames.length === 0) return;
     
     const { data, error } = await supabase
       .from('historico_precos')
@@ -218,14 +218,13 @@ export default function ShoppingList({ route, navigation }) {
     const bestDeal = bestPrices[item.name.toLowerCase().trim()];
     if (!bestDeal) return <View style={{ marginBottom: 10 }} />;
 
+    const userPrice = item.price || 0;
+    const isPayingMore = userPrice > bestDeal.preco;
+    const diff = userPrice - bestDeal.preco;
+
     if (!isPremium) {
-      const userPrice = item.price || 0;
-      const isUserPayingMore = userPrice > bestDeal.preco;
-      const showLabel = !item.completed || isUserPayingMore;
-
+      const showLabel = !item.completed || isPayingMore;
       if (!showLabel) return <View style={{ marginBottom: 10 }} />;
-
-      const diff = userPrice > bestDeal.preco ? userPrice - bestDeal.preco : null;
 
       return (
         <TouchableOpacity 
@@ -239,7 +238,7 @@ export default function ShoppingList({ route, navigation }) {
           }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 11, color: '#0369A1', fontWeight: '900' }}>
-                {diff 
+                {isPayingMore 
                   ? `🔥 Você economizaria R$ ${diff.toFixed(2)} aqui!` 
                   : "💡 Menor preço detectado para este item!"}
               </Text>
@@ -248,6 +247,29 @@ export default function ShoppingList({ route, navigation }) {
             <Text style={{ fontSize: 16 }}>🔒</Text>
           </View>
         </TouchableOpacity>
+      );
+    }
+
+    if (item.completed && isPayingMore) {
+      return (
+        <View style={{ paddingHorizontal: 20, marginBottom: 15 }}>
+          <View style={{ 
+            backgroundColor: '#FEF2F2', paddingVertical: 10, paddingHorizontal: 12, 
+            borderRadius: 12, borderLeftWidth: 4, borderLeftColor: '#EF4444'
+          }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 11, color: '#991B1B', fontWeight: '900' }}>
+                ⚠️ VOCÊ ESTÁ PAGANDO R$ {diff.toFixed(2)} POR ITEM A MAIS!
+              </Text>
+              <Text style={{ fontSize: 8, color: '#FCA5A5', fontWeight: 'bold' }}>
+                Atualizado em: {formatUpdateDate(bestDeal.data)}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 10, color: '#B91C1C', marginTop: 2 }}>
+              Neste item, outro usuário atualizou e o melhor preço é <Text style={{ fontWeight: '800' }}>R$ {bestDeal.preco.toFixed(2)}</Text> no <Text style={{ fontWeight: '800' }}>{bestDeal.mercadoNome}</Text>.
+            </Text>
+          </View>
+        </View>
       );
     }
 
@@ -277,6 +299,15 @@ export default function ShoppingList({ route, navigation }) {
   };
 
   const totalSavings = calculateTotalSavings();
+
+  if (!currentList) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#46C68E" />
+        <Text style={{ marginTop: 10, color: '#94A3B8' }}>Carregando lista...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { flex: 1, backgroundColor: '#FFF' }]}>

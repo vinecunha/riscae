@@ -7,7 +7,8 @@ import {
   Linking, 
   Platform,
   ActivityIndicator,
-  Alert
+  Alert,
+  Clipboard // Voltamos para o core para compatibilidade com Expo Go
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Purchases from 'react-native-purchases';
@@ -40,7 +41,12 @@ export default function Subscription({ navigation }) {
   const activeEntitlement = customerInfo?.entitlements.active['RISCAÊ Pro'];
   const isPremium = activeEntitlement !== undefined;
 
-  // Formatação de data simples
+  const copyToClipboard = (text) => {
+    if (!text) return;
+    Clipboard.setString(text);
+    Alert.alert("Copiado!", "ID do usuário copiado para a área de transferência.");
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Permanente';
     const date = new Date(dateString);
@@ -118,12 +124,41 @@ export default function Subscription({ navigation }) {
             </Text>
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 15 }}>
-            <Text style={{ color: '#64748B', fontWeight: '600' }}>ID Usuário</Text>
-            <Text style={{ color: '#1A1C2E', fontWeight: '800', fontSize: 9 }}>
-              {customerInfo?.originalAppUserId}
-            </Text>
-          </View>
+          <TouchableOpacity 
+            onPress={() => copyToClipboard(customerInfo?.originalAppUserId)}
+            activeOpacity={0.6}
+            style={{ 
+              flexDirection: 'row', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              paddingVertical: 15,
+              minHeight: 55
+            }}
+          >
+            <View style={{ flex: 0.4 }}>
+              <Text style={{ color: '#64748B', fontWeight: '600' }}>ID Usuário</Text>
+            </View>
+            
+            <View style={{ flex: 0.6, alignItems: 'flex-end' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text 
+                  style={{ 
+                    color: '#1A1C2E', 
+                    fontWeight: '800', 
+                    fontSize: 10,
+                    textAlign: 'right',
+                    marginRight: 6
+                  }}
+                  numberOfLines={1} 
+                  ellipsizeMode="middle"
+                >
+                  {customerInfo?.originalAppUserId}
+                </Text>
+                <Text style={{ fontSize: 12 }}>📋</Text>
+              </View>
+              <Text style={{ fontSize: 7, color: '#46C68E', fontWeight: '900', marginTop: 4 }}>TOQUE PARA COPIAR</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {isPremium && (
