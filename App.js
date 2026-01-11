@@ -1,20 +1,41 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
+
+import Dashboard from './src/screens/Dashboard';
+import ShoppingList from './src/screens/ShoppingList';
+import History from './src/screens/History';
+import Receipt from './src/screens/History/receipt';
+import Paywall from './src/screens/Premium/Paywall';
+import PriceIntelligence from './src/screens/Premium/PriceIntelligence';
+
+const Stack = createStackNavigator();
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator 
+        screenOptions={{ 
+          headerShown: false,
+          cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS
+        }}
+      >
+        <Stack.Screen name="Dashboard" component={Dashboard} />
+        <Stack.Screen name="Items" component={ShoppingList} />
+        <Stack.Screen name="History" component={History} />
+        <Stack.Screen name="Receipt" component={Receipt} />
+        
+        {/* ROTAS PREMIUM */}
+        <Stack.Screen name="PriceIntelligence" component={PriceIntelligence} />
+        <Stack.Screen 
+          name="Paywall" 
+          component={Paywall} 
+          options={{ 
+            cardStyleInterpolator: CardStyleInterpolators.forModalPresentationIOS,
+            gestureEnabled: true
+          }} 
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
