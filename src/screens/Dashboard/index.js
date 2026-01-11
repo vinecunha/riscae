@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -15,12 +15,15 @@ import {
 } from 'react-native';
 import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
+import Purchases from 'react-native-purchases';
+import { useIsFocused } from '@react-navigation/native';
 import { useCartStore } from '../../store/cartStore';
 import Footer from '../../components/Footer';
 import styles from './styles';
 
 export default function Dashboard({ navigation }) {
   const { lists, items, addList, importList, removeList, finishList, updateListName } = useCartStore();
+  const isFocused = useIsFocused();
   
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -29,6 +32,23 @@ export default function Dashboard({ navigation }) {
   const [listName, setListName] = useState('');
   const [editingList, setEditingList] = useState(null);
   const [importCode, setImportCode] = useState('');
+  const [isPremium, setIsPremium] = useState(false);
+
+  // Verificação de Status Premium
+  const checkPremiumStatus = async () => {
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      setIsPremium(customerInfo.entitlements.active['RISCAÊ Pro'] !== undefined);
+    } catch (e) {
+      console.log("Erro ao verificar premium:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (isFocused) {
+      checkPremiumStatus();
+    }
+  }, [isFocused]);
 
   const sortedLists = useMemo(() => {
     return [...lists].sort((a, b) => {
@@ -121,8 +141,32 @@ export default function Dashboard({ navigation }) {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
                 <Image source={require('../../assets/logo.png')} style={{ width: 100, height: 40, marginBottom: 5 }} resizeMode="contain" />
-                <Text style={{...styles.label, fontSize: 11}}>{lists.length} lista(s) criada(s)</Text>
+                
+                {/* TICKER PREMIUM RESTAURADO */}
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('Premium')}
+                  style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    backgroundColor: isPremium ? 'rgba(255, 215, 0, 0.6)' : '#F1F5F9',
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 8,
+                    alignSelf: 'flex-start',
+                    marginTop: 4
+                  }}
+                >
+                  <Text style={{ fontSize: 10, marginRight: 5 }}>{isPremium ? '👑' : '⚪'}</Text>
+                  <Text style={{ 
+                    fontSize: 10, 
+                    fontWeight: '900', 
+                    color: isPremium ? '#B8860B' : '#64748B' 
+                  }}>
+                    {isPremium ? 'ASSINATURA PRO ATIVA' : 'VERSÃO GRATUITA'}
+                  </Text>
+                </TouchableOpacity>
               </View>
+
               <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                 <TouchableOpacity 
                   onPress={() => navigation.navigate('ScanReceipt')} 

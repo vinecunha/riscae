@@ -5,9 +5,10 @@ import {
   ActivityIndicator, Alert, TouchableWithoutFeedback 
 } from 'react-native';
 import * as Location from 'expo-location';
+import Purchases from 'react-native-purchases'; // Importado
+import { useIsFocused } from '@react-navigation/native'; // Importado
 import { supabase } from '../../services/supabase'; 
 import { useCartStore } from '../../store/cartStore';
-import { useAuthStore } from '../../store/authStore';
 import ShoppingItem from '../../components/ShoppingItem';
 import Footer from '../../components/Footer';
 import styles from './styles';
@@ -16,7 +17,7 @@ import premiumStyles from './premiumStyles';
 export default function ShoppingList({ route, navigation }) {
   const { listId } = route?.params || {};
   const { items, addItem, confirmItem, removeItem, reopenItem, lists, finishList, updateListName } = useCartStore();
-  const { isPremium } = useAuthStore();
+  const isFocused = useIsFocused();
   
   const [itemName, setItemName] = useState('');
   const [unitType, setUnitType] = useState('UNIT');
@@ -28,6 +29,23 @@ export default function ShoppingList({ route, navigation }) {
   const [isLoadingMarkets, setIsLoadingMarkets] = useState(false);
   const [bestPrices, setBestPrices] = useState({});
   const [suggestions, setSuggestions] = useState([]);
+  const [isPremium, setIsPremium] = useState(false); // Estado local controlado pelo RevenueCat
+
+  // Verificação de Status Premium Real
+  const checkPremiumStatus = async () => {
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      setIsPremium(customerInfo.entitlements.active['RISCAÊ Pro'] !== undefined);
+    } catch (e) {
+      console.log("Erro ao verificar premium na lista:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (isFocused) {
+      checkPremiumStatus();
+    }
+  }, [isFocused]);
 
   const currentList = lists.find(l => l.id === listId);
   const filteredItems = items.filter(i => i.listId === listId);
