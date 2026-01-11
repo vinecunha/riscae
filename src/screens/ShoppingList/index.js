@@ -38,6 +38,18 @@ export default function ShoppingList({ route, navigation }) {
     }
   }, [filteredItems.length]);
 
+  const formatUpdateDate = (dateString) => {
+    if (!dateString) return '--';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 1) return 'Hoje';
+    if (diffDays <= 7) return `Há ${diffDays} dias`;
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  };
+
   const fetchSuggestions = async (text) => {
     if (text.length < 2) {
       setSuggestions([]);
@@ -110,6 +122,7 @@ export default function ShoppingList({ route, navigation }) {
       .select(`
         nome_item, 
         preco, 
+        data_compra,
         mercados_id,
         mercados!fk_mercado_osm (
           nome
@@ -130,6 +143,7 @@ export default function ShoppingList({ route, navigation }) {
         if (!cheapestMap[key]) {
           cheapestMap[key] = {
             preco: entry.preco,
+            data: entry.data_compra,
             mercadoNome: entry.mercados?.nome || 'Mercado desconhecido'
           };
         }
@@ -171,7 +185,7 @@ export default function ShoppingList({ route, navigation }) {
       const { latitude, longitude } = location.coords;
       const delta = 0.045;
       const viewbox = `${longitude - delta},${latitude + delta},${longitude + delta},${latitude - delta}`;
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=supermarket&lat=${latitude}&lon=${longitude}&bounded=1&viewbox=${viewbox}&limit=15`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=supermarket&lat=${latitude}&lon=${longitude}&bounded=1&viewbox=${viewbox}&limit=50`;
       const response = await fetch(url, { headers: { 'User-Agent': 'RiscaE_App' } });
       const data = await response.json();
       setNearbyMarkets(data.map(m => ({
@@ -225,11 +239,19 @@ export default function ShoppingList({ route, navigation }) {
       <View style={{ paddingHorizontal: 20, marginBottom: 15 }}>
         <View style={{ 
           backgroundColor: '#F0FDF4', paddingVertical: 8, paddingHorizontal: 12, 
-          borderRadius: 12, flexDirection: 'row', alignItems: 'center',
+          borderRadius: 12, flexDirection: 'column',
           borderLeftWidth: 4, borderLeftColor: '#46C68E'
         }}>
-          <Text style={{ fontSize: 11, color: '#166534', fontWeight: '600' }}>
-            ✨ Melhor preço: <Text style={{ fontWeight: '900' }}>R$ {bestDeal.preco.toFixed(2)}</Text> no {bestDeal.mercadoNome}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+            <Text style={{ fontSize: 11, color: '#166534', fontWeight: '600' }}>
+              ✨ Melhor preço: <Text style={{ fontWeight: '900' }}>R$ {bestDeal.preco.toFixed(2)}</Text>
+            </Text>
+            <Text style={{ fontSize: 9, color: '#94A3B8', fontWeight: 'bold' }}>
+              ATUALIZADO: {formatUpdateDate(bestDeal.data)}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 10, color: '#166534' }}>
+            No mercado <Text style={{ fontWeight: '900' }}>{bestDeal.mercadoNome}</Text>.
           </Text>
         </View>
       </View>

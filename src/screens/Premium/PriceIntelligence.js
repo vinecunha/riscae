@@ -17,6 +17,12 @@ export default function PriceIntelligence({ route, navigation }) {
     analyzePrices();
   }, []);
 
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Data ignorada';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  };
+
   const analyzePrices = async () => {
     setLoading(true);
     const itemNames = filteredItems.map(i => i.name.toLowerCase().trim());
@@ -31,6 +37,7 @@ export default function PriceIntelligence({ route, navigation }) {
       .select(`
         nome_item, 
         preco, 
+        data_compra,
         mercados_id,
         mercados!fk_mercado_osm (
           nome,
@@ -40,9 +47,7 @@ export default function PriceIntelligence({ route, navigation }) {
       .in('nome_item', itemNames)
       .order('preco', { ascending: true });
 
-    if (error) {
-      console.error("Erro na busca:", error);
-    }
+    if (error) console.error("Erro na busca:", error);
 
     if (data) {
       const bestDeals = {};
@@ -92,7 +97,7 @@ export default function PriceIntelligence({ route, navigation }) {
                 "{currentList?.name}"
                 </Text>
             </View>
-            </View>
+        </View>
 
       {loading ? (
         <ActivityIndicator color="#46C68E" size="large" style={{ flex: 1 }} />
@@ -111,10 +116,15 @@ export default function PriceIntelligence({ route, navigation }) {
             <View style={[premiumStyles.card, { flexDirection: 'column', alignItems: 'stretch' }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View style={{ flex: 1, paddingRight: 10 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '900', color: '#46C68E', marginBottom: 2 }}>
-                    OFERTA ENCONTRADA
-                  </Text>
-                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#1A1C2E', textTransform: 'capitalize' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '900', color: '#46C68E' }}>
+                        OFERTA ENCONTRADA
+                    </Text>
+                    <Text style={{ fontSize: 10, color: '#94A3B8', fontWeight: 'bold' }}>
+                        • {formatDate(item.data_compra)}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#1A1C2E', textTransform: 'capitalize', marginTop: 2 }}>
                     {item.nome_item}
                   </Text>
                 </View>
