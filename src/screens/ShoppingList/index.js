@@ -27,6 +27,7 @@ export default function ShoppingList({ route, navigation }) {
   const [nearbyMarkets, setNearbyMarkets] = useState([]);
   const [isLoadingMarkets, setIsLoadingMarkets] = useState(false);
   const [bestPrices, setBestPrices] = useState({});
+  const [suggestions, setSuggestions] = useState([]);
 
   const currentList = lists.find(l => l.id === listId);
   const filteredItems = items.filter(i => i.listId === listId);
@@ -36,6 +37,70 @@ export default function ShoppingList({ route, navigation }) {
       fetchComparisons();
     }
   }, [filteredItems.length]);
+
+  const fetchSuggestions = async (text) => {
+    if (text.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('historico_precos')
+        .select('nome_item, marca, unidade, categoria')
+        .ilike('nome_item', `%${text}%`)
+        .limit(5);
+
+      if (!error && data) {
+        const formatted = data.map(item => ({
+          nome_limpo: item.nome_item,
+          marca_limpa: item.marca,
+          unidade: item.unidade,
+          categoria: item.categoria
+        }));
+
+        const unique = formatted.filter((v, i, a) => 
+          a.findIndex(t => t.nome_limpo === v.nome_limpo && t.marca_limpa === v.marca_limpa) === i
+        );
+        
+        setSuggestions(unique);
+      }
+    } catch (err) {
+      console.error("Erro ao buscar sugestões:", err);
+    }
+  };
+
+  const handleAddItem = async (name, suggestionData = null) => {
+    if (!name.trim()) return;
+
+    let finalName = name.trim();
+    let finalBrand = suggestionData?.marca_limpa || 'Genérico';
+    let finalCategory = suggestionData?.categoria || 'Outros';
+    let finalUnit = suggestionData?.unidade || unitType;
+
+    if (!suggestionData) {
+      const { data: dictData } = await supabase
+        .from('dicionario_produtos')
+        .select('*')
+        .ilike('termo_original', `%${finalName}%`)
+        .maybeSingle();
+
+      if (dictData) {
+        finalName = dictData.nome_limpo;
+        finalBrand = dictData.marca_limpa || 'Genérico';
+        finalCategory = dictData.categoria;
+      }
+    }
+
+    addItem(listId, finalName, finalUnit, {
+      brand: finalBrand,
+      category: finalCategory
+    });
+
+    setItemName('');
+    setSuggestions([]);
+    Keyboard.dismiss();
+  };
 
   const fetchComparisons = async () => {
     const itemNames = filteredItems.map(i => i.name.toLowerCase().trim());
@@ -73,18 +138,15 @@ export default function ShoppingList({ route, navigation }) {
     }
   };
 
-  // Cálculo da economia total da lista
   const calculateTotalSavings = () => {
     let savings = 0;
     filteredItems.forEach(item => {
       const bestDeal = bestPrices[item.name.toLowerCase().trim()];
       if (bestDeal) {
-        // Se o usuário já deu um preço, compara. Se não, usa o preço do banco como base de economia
         const userPrice = item.price || 0;
         if (userPrice > bestDeal.preco) {
           savings += (userPrice - bestDeal.preco) * (item.amount || 1);
         } else if (userPrice === 0) {
-          // Atiçador: se ele não pos preço, apenas sugerimos que há algo mais barato (ex: média de 1.00 de economia por item)
           savings += 0.50; 
         }
       }
@@ -229,7 +291,6 @@ export default function ShoppingList({ route, navigation }) {
               R$ {currentList?.total?.toFixed(2) || "0.00"}
             </Text>
             
-            {/* NOVO: ATIÇADOR DE ECONOMIA TOTAL */}
             {!isPremium && totalSavings > 0 && (
               <TouchableOpacity 
                 onPress={() => navigation.navigate('Paywall')}
@@ -257,21 +318,44 @@ export default function ShoppingList({ route, navigation }) {
           data={filteredItems.sort((a,b) => a.completed - b.completed)}
           keyExtractor={item => item.id}
           ListHeaderComponent={
-            <View style={{ padding: 20 }}>
+            <View style={{ padding: 20, zIndex: 10 }}>
               <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 16, padding: 6 }}>
                 <TextInput 
                   style={{ flex: 1, height: 50, paddingHorizontal: 15, fontSize: 16, fontWeight: '600' }} 
                   placeholder="O que vamos comprar?" 
                   value={itemName}
-                  onChangeText={setItemName}
+                  onChangeText={(text) => {
+                    setItemName(text);
+                    fetchSuggestions(text);
+                  }}
                 />
                 <TouchableOpacity 
-                  onPress={() => { addItem(listId, itemName, unitType); setItemName(''); Keyboard.dismiss(); }}
+                  onPress={() => handleAddItem(itemName)}
                   style={{ backgroundColor: '#1A1C2E', width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Text style={{ color: '#FFF', fontSize: 24 }}>+</Text>
                 </TouchableOpacity>
               </View>
+
+              {suggestions.length > 0 && (
+                <View style={{ 
+                  backgroundColor: '#FFF', marginTop: 5, borderRadius: 12, elevation: 5, 
+                  shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10,
+                  borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden'
+                }}>
+                  {suggestions.map((suggestion, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={{ padding: 15, borderBottomWidth: index === suggestions.length - 1 ? 0 : 1, borderBottomColor: '#F1F5F9' }}
+                      onPress={() => handleAddItem(suggestion.nome_limpo, suggestion)}
+                    >
+                      <Text style={{ fontWeight: '600', color: '#1A1C2E' }}>
+                        {suggestion.nome_limpo} <Text style={{ fontWeight: '400', color: '#94A3B8' }}>({suggestion.marca_limpa || 'Genérico'})</Text>
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           }
           renderItem={({ item }) => (

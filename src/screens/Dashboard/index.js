@@ -121,13 +121,27 @@ export default function Dashboard({ navigation }) {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
                 <Image source={require('../../assets/logo.png')} style={{ width: 100, height: 40, marginBottom: 5 }} resizeMode="contain" />
-                <Text style={styles.label}>{lists.length} lista(s) criada(s)</Text>
+                <Text style={{...styles.label, fontSize: 11}}>{lists.length} lista(s) criada(s)</Text>
               </View>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity onPress={() => navigation.navigate('History')} style={{ backgroundColor: '#F1F5F9', marginHorizontal: 5, width: 45, height: 45, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 20 }}>🕒</Text>
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('ScanReceipt')} 
+                  style={{ backgroundColor: '#F1F5F9', width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={{ fontSize: 18 }}>📷</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setImportModalVisible(true)} style={{ backgroundColor: '#1A1C2E', paddingHorizontal: 15, borderRadius: 12, justifyContent: 'center' }}>
+                
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('History')} 
+                  style={{ backgroundColor: '#F1F5F9', width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={{ fontSize: 18 }}>🕒</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  onPress={() => setImportModalVisible(true)} 
+                  style={{ backgroundColor: '#1A1C2E', height: 42, paddingHorizontal: 15, borderRadius: 12, justifyContent: 'center' }}
+                >
                   <Text style={{ fontSize: 11, fontWeight: '900', color: '#FFF' }}>IMPORTAR</Text>
                 </TouchableOpacity>
               </View>
@@ -137,7 +151,7 @@ export default function Dashboard({ navigation }) {
           <FlatList 
             data={sortedLists}
             keyExtractor={item => item.id}
-            contentContainerStyle={{ paddingHorizontal: 5, paddingBottom: 150 }}
+            contentContainerStyle={{ paddingHorizontal: 5, paddingBottom: 150, paddingTop: 10 }}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => {
               const listItems = items.filter(i => i.listId === item.id);

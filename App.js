@@ -8,6 +8,7 @@ import History from './src/screens/History';
 import Receipt from './src/screens/History/receipt';
 import Paywall from './src/screens/Premium/Paywall';
 import PriceIntelligence from './src/screens/Premium/PriceIntelligence';
+import ScanReceipt from './src/screens/ScanReceipt';
 
 const Stack = createStackNavigator();
 
@@ -15,6 +16,7 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator 
+        initialRouteName="Dashboard"
         screenOptions={{ 
           headerShown: false,
           cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS
@@ -24,8 +26,8 @@ export default function App() {
         <Stack.Screen name="Items" component={ShoppingList} />
         <Stack.Screen name="History" component={History} />
         <Stack.Screen name="Receipt" component={Receipt} />
+        <Stack.Screen name="ScanReceipt" component={ScanReceipt} />
         
-        {/* ROTAS PREMIUM */}
         <Stack.Screen name="PriceIntelligence" component={PriceIntelligence} />
         <Stack.Screen 
           name="Paywall" 
