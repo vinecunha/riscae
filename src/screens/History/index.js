@@ -117,17 +117,22 @@ export default function History({ navigation }) {
                 style={styles.card}
               >
                 <View style={styles.cardHeader}>
-                  <View>
-                    <Text style={styles.listName}>{item.listName}</Text>
+                  {/* Container de texto com flex: 1 para ocupar o espaço disponível e empurrar o badge */}
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={styles.listName} numberOfLines={1} ellipsizeMode="tail">
+                      {item.listName}
+                    </Text>
                     <Text style={styles.dateText}>{item.date}</Text>
                   </View>
+                  
+                  {/* O badge agora fica fixo à direita sem ser empurrado para fora */}
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>VER CUPOM</Text>
                   </View>
                 </View>
                 
                 <View style={styles.cardFooter}>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.itemsCount}>
                       {item.completedCount} de {item.itemsCount} itens riscados
                     </Text>
