@@ -7,7 +7,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useIsFocused } from '@react-navigation/native';
 import { useCartStore } from '../../store/cartStore';
 
-import DashboardHeader from '../../components/DashboardHeader';
+import Header from '../../components/Header';
 import DashboardListCard from '../../components/DashboardListCard';
 import ImportModal from '../../components/ImportModal';
 import ListModal from '../../components/ListModal';
@@ -73,7 +73,7 @@ export default function Dashboard({ navigation }) {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
-        <DashboardHeader isPremium={isPremium} navigation={navigation} onImport={() => setImportVisible(true)} />
+        <Header isPremium={isPremium} navigation={navigation} onImport={() => setImportVisible(true)} />
 
         <FlatList 
           data={sortedLists}

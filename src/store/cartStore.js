@@ -11,30 +11,67 @@ export const useCartStore = create(
       lists: [],
       items: [],
       history: [],
+      // NOVOS CAMPOS PARA OFFLINE
+      offlinePrices: {}, 
+      uploadQueue: [],
+
+      syncOfflinePrices: async (itemNames) => {
+        try {
+          const { data, error } = await supabase
+            .from('historico_precos')
+            .select('nome_item, preco')
+            .in('nome_item', itemNames);
+          
+          if (error) throw error;
+
+          if (data) {
+            const cache = {};
+            data.forEach(d => {
+              const key = d.nome_item.toLowerCase().trim();
+              if (!cache[key] || d.preco < cache[key]) {
+                cache[key] = d.preco;
+              }
+            });
+            set({ offlinePrices: cache });
+            return "SUCCESS";
+          }
+        } catch (e) {
+          console.error("Erro ao sincronizar preços offline:", e);
+          return "ERROR";
+        }
+      },
+
+      processQueue: async () => {
+        const { uploadQueue } = get();
+        if (uploadQueue.length === 0) return;
+
+        try {
+          const { error } = await supabase.from('historico_precos').insert(uploadQueue);
+          if (!error) {
+            set({ uploadQueue: [] });
+            console.log("Fila de upload processada com sucesso!");
+          }
+        } catch (e) {
+          console.log("Ainda sem conexão para subir a fila.");
+        }
+      },
 
       uploadBackup: async () => {
         try {
-          // 1. Checa se é PRO pelo RevenueCat
           const customerInfo = await Purchases.getCustomerInfo();
           if (customerInfo.entitlements.active['RISCAÊ Pro'] === undefined) {
             return "PAYWALL";
           }
-
-          // 2. Pega o usuário logado no Supabase
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return "LOGIN_REQUIRED";
-
           const { lists, items, history } = get();
-          
-          // 3. Salva usando o ID do Supabase (Segurança total)
           const { error } = await supabase
             .from('backups')
             .upsert({ 
-              user_id: user.id, // ID REAL DO USUÁRIO
+              user_id: user.id,
               data: { lists, items, history },
               updated_at: new Date().toISOString() 
             });
-
           if (error) throw error;
           return "SUCCESS";
         } catch (e) {
@@ -78,7 +115,6 @@ export const useCartStore = create(
       importList: (newListData, newItemsData) => {
         set((state) => {
           const newListId = Date.now().toString();
-          
           const newList = {
             id: newListId,
             name: newListData.name,
@@ -86,14 +122,12 @@ export const useCartStore = create(
             lockedMarket: null,
             createdAt: new Date().toISOString()
           };
-
           const newItems = newItemsData.map(item => ({
             ...item,
             id: Math.random().toString(36).substr(2, 9) + Date.now().toString(),
             listId: newListId,
-            completed: false // Garante que a lista comece limpa para quem importa
+            completed: false
           }));
-
           return {
             lists: [...state.lists, newList],
             items: [...state.items, ...newItems]
@@ -170,17 +204,14 @@ export const useCartStore = create(
       duplicateFromHistory: (historyId) => {
         const entry = get().history.find(h => h.id === historyId);
         if (!entry) return;
-
         const newListId = Date.now().toString();
         const newList = { id: newListId, name: `${entry.listName} (Cópia)`, total: entry.total, lockedMarket: null };
-        
         const newItems = entry.items.map(item => ({
           ...item,
           id: Math.random().toString(36).substr(2, 9),
           listId: newListId,
           completed: false
         }));
-
         set((state) => ({
           lists: [...state.lists, newList],
           items: [...state.items, ...newItems]
@@ -233,6 +264,14 @@ export const useCartStore = create(
           items: state.items.filter(i => i.listId !== listId)
         }));
 
+        const priceHistory = listItems.map(item => ({
+          mercados_id: String(marketData.place_id), 
+          nome_item: item.name.toLowerCase().trim(),
+          preco: item.price,
+          unidade: item.unitType,
+          data_compra: new Date().toISOString()
+        }));
+
         try {
           await supabase.from('mercados').upsert({
             osm_id: String(marketData.place_id),
@@ -240,16 +279,12 @@ export const useCartStore = create(
             endereco: marketData.address
           }, { onConflict: 'osm_id' });
 
-          const priceHistory = listItems.map(item => ({
-            mercados_id: String(marketData.place_id), 
-            nome_item: item.name.toLowerCase().trim(),
-            preco: item.price,
-            unidade: item.unitType
-          }));
+          const { error } = await supabase.from('historico_precos').insert(priceHistory);
+          if (error) throw error;
 
-          await supabase.from('historico_precos').insert(priceHistory);
         } catch (error) {
-          console.error("Erro Supabase:", error.message);
+          console.log("Erro de conexão. Salvando preços na fila offline.");
+          set((state) => ({ uploadQueue: [...state.uploadQueue, ...priceHistory] }));
         }
       }
     }),

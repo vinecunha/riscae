@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Purchases from 'react-native-purchases';
 import * as Linking from 'expo-linking';
 import { useAuthStore } from './src/store/authStore';
+import { useCartStore } from './src/store/cartStore';
 import { supabase } from './src/services/supabase';
 
 // Telas
@@ -27,10 +28,10 @@ const Stack = createStackNavigator();
 
 export default function App() {
   const { setPremium } = useAuthStore();
+  const { history, setHistory } = useCartStore(); // Para o Restore Inteligente
   const [session, setSession] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
-  // Configuração de Deep Link
   const prefix = Linking.createURL('/');
   const linking = {
     prefixes: [prefix, 'riscae://'],
@@ -41,47 +42,117 @@ export default function App() {
     },
   };
 
+  // RESTORE INTELIGENTE: Busca listas da nuvem e mescla com as locais
+  const syncCloudLists = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_lists')
+        .select('*')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Transforma o formato do banco para o formato do seu Store
+        const cloudHistory = data.map(list => ({
+          id: list.id,
+          name: list.name,
+          market: list.market,
+          items: list.items,
+          total: list.total,
+          date: list.created_at,
+          completedCount: list.items.filter(i => i.completed).length
+        }));
+
+        // Define o histórico (você pode optar por mesclar ou substituir)
+        setHistory(cloudHistory);
+      }
+    } catch (e) {
+      console.log("Erro no Restore Inteligente:", e.message);
+    }
+  };
+
+  // BACKUP AUTOMÁTICO: Sempre que o histórico local mudar e houver sessão
   useEffect(() => {
-    // 1. Função para verificar sessão inicial e configurar compras
+    const performBackup = async () => {
+      if (session?.user && history.length > 0) {
+        try {
+          // Upsert das últimas 5 listas para poupar banda/processamento
+          const recentLists = history.slice(0, 5).map(list => ({
+            user_id: session.user.id,
+            name: list.name || 'Lista Sem Nome',
+            market: list.market || '',
+            items: list.items || [],
+            total: list.total || 0,
+            updated_at: new Date()
+          }));
+
+          await supabase.from('user_lists').upsert(recentLists, { onConflict: 'user_id, name' });
+        } catch (e) {
+          console.log("Erro no Backup Automático:", e);
+        }
+      }
+    };
+
+    performBackup();
+  }, [history]); // Dispara quando a lista local mudar
+
+  const updatePremiumStatus = async (user) => {
+    if (!user) {
+      setPremium(false);
+      return;
+    }
+    try {
+      const { customerInfo } = await Purchases.logIn(user.id);
+      setPremium(customerInfo.entitlements.active['RISCAÊ Pro'] !== undefined);
+    } catch (e) {
+      console.log("Erro ao sincronizar premium:", e);
+    }
+  };
+
+  useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Verifica se já existe um usuário logado
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         setSession(initialSession);
 
-        // Configura RevenueCat
         await Purchases.configure({ apiKey: "test_OBsTXXbthpnBZQLabNcSHMjvHln" });
 
         if (initialSession?.user) {
-          await Purchases.logIn(initialSession.user.id);
-          const customerInfo = await Purchases.getCustomerInfo();
-          setPremium(typeof customerInfo.entitlements.active['RISCAÊ Pro'] !== "undefined");
+          await updatePremiumStatus(initialSession.user);
+          await syncCloudLists(initialSession.user.id);
         }
       } catch (e) {
         console.log("Erro na inicialização:", e);
       } finally {
-        // LIBERA A TELA (Sai do estado branco)
         setLoadingAuth(false);
       }
     };
 
     initializeApp();
 
-    // 2. Ouvinte de mudanças na autenticação
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       setSession(currentSession);
       
-      if (currentSession?.user) {
-        await Purchases.logIn(currentSession.user.id);
+      if (event === 'SIGNED_IN' && currentSession?.user) {
+        await updatePremiumStatus(currentSession.user);
+        await syncCloudLists(currentSession.user.id);
+      }
+      
+      if (event === 'SIGNED_OUT') {
+        setPremium(false);
+        setHistory([]); // Limpa ao sair para segurança
+        await Purchases.logOut();
       }
     });
 
-    // 3. Ouvinte de estado do App (para atualizar premium ao voltar ao app)
-    const appStateListener = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active' && session?.user) {
-        Purchases.getCustomerInfo().then((info) => {
-          setPremium(info.entitlements.active['RISCAÊ Pro'] !== undefined);
-        });
+    const appStateListener = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'active') {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession?.user) {
+          await updatePremiumStatus(currentSession.user);
+        }
       }
     });
 
@@ -91,7 +162,6 @@ export default function App() {
     };
   }, []);
 
-  // Tela de carregamento para evitar o branco absoluto
   if (loadingAuth) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' }}>
