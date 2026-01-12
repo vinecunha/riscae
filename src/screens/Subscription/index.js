@@ -8,23 +8,32 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  Clipboard // Voltamos para o core para compatibilidade com Expo Go
+  Clipboard 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Purchases from 'react-native-purchases';
 import { useIsFocused } from '@react-navigation/native';
+import { supabase } from '../../services/supabase'; // Importe o seu supabase
 import styles from './styles';
 
 export default function Subscription({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [customerInfo, setCustomerInfo] = useState(null);
+  const [userEmail, setUserEmail] = useState(''); // Novo estado para o e-mail
   const isFocused = useIsFocused();
 
   const fetchStatus = async () => {
     try {
       setLoading(true);
+      
+      // 1. Busca dados do RevenueCat
       const info = await Purchases.getCustomerInfo();
       setCustomerInfo(info);
+
+      // 2. Busca e-mail do usuário no Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserEmail(user.email);
+
     } catch (e) {
       Alert.alert("Erro", "Não foi possível carregar os dados.");
     } finally {
@@ -44,7 +53,7 @@ export default function Subscription({ navigation }) {
   const copyToClipboard = (text) => {
     if (!text) return;
     Clipboard.setString(text);
-    Alert.alert("Copiado!", "ID do usuário copiado para a área de transferência.");
+    Alert.alert("Copiado!", "ID do usuário copiado.");
   };
 
   const formatDate = (dateString) => {
@@ -110,6 +119,12 @@ export default function Subscription({ navigation }) {
 
         <Text style={[styles.label, { marginBottom: 15, marginLeft: 5 }]}>Detalhes da conta</Text>
         <View style={styles.card}>
+          {/* CAMPO DE E-MAIL ADICIONADO AQUI */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+            <Text style={{ color: '#64748B', fontWeight: '600' }}>E-mail</Text>
+            <Text style={{ color: '#1A1C2E', fontWeight: '800' }}>{userEmail || 'Não logado'}</Text>
+          </View>
+
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
             <Text style={{ color: '#64748B', fontWeight: '600' }}>Plano Atual</Text>
             <Text style={{ color: '#1A1C2E', fontWeight: '800' }}>
@@ -127,50 +142,30 @@ export default function Subscription({ navigation }) {
           <TouchableOpacity 
             onPress={() => copyToClipboard(customerInfo?.originalAppUserId)}
             activeOpacity={0.6}
-            style={{ 
-              flexDirection: 'row', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              paddingVertical: 15,
-              minHeight: 55
-            }}
+            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15 }}
           >
             <View style={{ flex: 0.4 }}>
               <Text style={{ color: '#64748B', fontWeight: '600' }}>ID Usuário</Text>
             </View>
-            
             <View style={{ flex: 0.6, alignItems: 'flex-end' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text 
-                  style={{ 
-                    color: '#1A1C2E', 
-                    fontWeight: '800', 
-                    fontSize: 10,
-                    textAlign: 'right',
-                    marginRight: 6
-                  }}
-                  numberOfLines={1} 
-                  ellipsizeMode="middle"
-                >
+                <Text style={{ color: '#1A1C2E', fontWeight: '800', fontSize: 10, marginRight: 6 }} numberOfLines={1} ellipsizeMode="middle">
                   {customerInfo?.originalAppUserId}
                 </Text>
                 <Text style={{ fontSize: 12 }}>📋</Text>
               </View>
-              <Text style={{ fontSize: 7, color: '#46C68E', fontWeight: '900', marginTop: 4 }}>TOQUE PARA COPIAR</Text>
             </View>
           </TouchableOpacity>
         </View>
 
-        {isPremium && (
+        {isPremium ? (
           <TouchableOpacity 
             onPress={handleManageSubscription}
             style={{ backgroundColor: '#F1F5F9', paddingVertical: 20, borderRadius: 20, alignItems: 'center', marginTop: 30 }}
           >
             <Text style={{ color: '#64748B', fontWeight: '800', fontSize: 14 }}>GERENCIAR ASSINATURA</Text>
           </TouchableOpacity>
-        )}
-
-        {!isPremium && (
+        ) : (
           <TouchableOpacity 
             onPress={() => navigation.navigate('Paywall')}
             style={{ backgroundColor: '#46C68E', paddingVertical: 20, borderRadius: 20, alignItems: 'center', marginTop: 30 }}
@@ -178,10 +173,6 @@ export default function Subscription({ navigation }) {
             <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 14 }}>TORNE-SE PREMIUM</Text>
           </TouchableOpacity>
         )}
-
-        <Text style={{ textAlign: 'center', color: '#94A3B8', fontSize: 11, marginTop: 25, lineHeight: 18 }}>
-          As assinaturas são processadas pela sua loja de aplicativos oficial.
-        </Text>
       </ScrollView>
     </SafeAreaView>
   );

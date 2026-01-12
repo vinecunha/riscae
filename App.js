@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Platform, LogBox, AppState } from 'react-native';
+import { Platform, LogBox, AppState, View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -30,7 +30,7 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
-  // Configuração de Deep Link para o Magic Link do e-mail
+  // Configuração de Deep Link
   const prefix = Linking.createURL('/');
   const linking = {
     prefixes: [prefix, 'riscae://'],
@@ -42,46 +42,63 @@ export default function App() {
   };
 
   useEffect(() => {
-    // 1. Monitorar Autenticação (Supabase)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoadingAuth(false);
-    });
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    // 2. Monitorar Compras (RevenueCat)
-    const setupPurchases = async () => {
+    // 1. Função para verificar sessão inicial e configurar compras
+    const initializeApp = async () => {
       try {
+        // Verifica se já existe um usuário logado
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        setSession(initialSession);
+
+        // Configura RevenueCat
         await Purchases.configure({ apiKey: "test_OBsTXXbthpnBZQLabNcSHMjvHln" });
-        const customerInfo = await Purchases.getCustomerInfo();
-        const isPro = typeof customerInfo.entitlements.active['RISCAÊ Pro'] !== "undefined";
-        setPremium(isPro);
+
+        if (initialSession?.user) {
+          await Purchases.logIn(initialSession.user.id);
+          const customerInfo = await Purchases.getCustomerInfo();
+          setPremium(typeof customerInfo.entitlements.active['RISCAÊ Pro'] !== "undefined");
+        }
       } catch (e) {
-        console.log("Erro na configuração RevenueCat:", e);
+        console.log("Erro na inicialização:", e);
+      } finally {
+        // LIBERA A TELA (Sai do estado branco)
+        setLoadingAuth(false);
       }
     };
 
-    setupPurchases();
+    initializeApp();
 
+    // 2. Ouvinte de mudanças na autenticação
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+      setSession(currentSession);
+      
+      if (currentSession?.user) {
+        await Purchases.logIn(currentSession.user.id);
+      }
+    });
+
+    // 3. Ouvinte de estado do App (para atualizar premium ao voltar ao app)
     const appStateListener = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
+      if (nextAppState === 'active' && session?.user) {
         Purchases.getCustomerInfo().then((info) => {
-          const isActive = info.entitlements.active['RISCAÊ Pro'] !== undefined;
-          setPremium(isActive);
+          setPremium(info.entitlements.active['RISCAÊ Pro'] !== undefined);
         });
       }
     });
 
     return () => {
+      authListener.subscription.unsubscribe();
       appStateListener.remove();
-      if (authListener) authListener.subscription.unsubscribe();
     };
   }, []);
 
-  if (loadingAuth) return null;
+  // Tela de carregamento para evitar o branco absoluto
+  if (loadingAuth) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' }}>
+        <ActivityIndicator size="large" color="#1A1C2E" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -93,7 +110,6 @@ export default function App() {
           }}
         >
           {session ? (
-            // Grupo de Telas Autenticadas
             <>
               <Stack.Screen name="Dashboard" component={Dashboard} />
               <Stack.Screen name="Items" component={ShoppingList} />
@@ -114,7 +130,6 @@ export default function App() {
               <Stack.Screen name="Backup" component={BackupScreen} />
             </>
           ) : (
-            // Tela de Login (Aparece apenas se não estiver logado)
             <Stack.Screen name="Login" component={Login} />
           )}
         </Stack.Navigator>

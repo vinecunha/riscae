@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   View, Text, TouchableOpacity, ScrollView, 
-  SafeAreaView, Dimensions, ActivityIndicator, StatusBar, Platform
+  SafeAreaView, Dimensions, ActivityIndicator, StatusBar, Platform, Alert
 } from 'react-native';
 import Purchases from 'react-native-purchases';
+import { supabase } from '../../services/supabase'; // Importe o seu supabase
 import { useCartStore } from '../../store/cartStore';
 import Footer from '../../components/Footer';
 import styles from './styles';
@@ -14,6 +15,7 @@ export default function ProfileScreen({ navigation }) {
   const { history } = useCartStore();
   const [isPremium, setIsPremium] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState('');
 
   const totalGasto = useMemo(() => 
     history.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0), 
@@ -39,18 +41,42 @@ export default function ProfileScreen({ navigation }) {
   }, [history]);
 
   useEffect(() => {
-    checkStatus();
+    fetchData();
   }, []);
 
-  const checkStatus = async () => {
+  const fetchData = async () => {
     try {
+      // Busca Status Premium
       const customerInfo = await Purchases.getCustomerInfo();
       setIsPremium(customerInfo.entitlements.active['RISCAÊ Pro'] !== undefined);
+      
+      // Busca E-mail do Usuário Autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserEmail(user.email);
+
     } catch (e) {
-      console.log("Erro RevenueCat:", e);
+      console.log("Erro ao carregar dados do perfil:", e);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      "Sair da Conta",
+      "Tem certeza que deseja sair? Suas listas locais continuarão salvas neste dispositivo.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Sair", 
+          style: "destructive", 
+          onPress: async () => {
+            await supabase.auth.signOut();
+            // O App.js detectará a mudança de sessão e enviará para a tela de Login
+          } 
+        }
+      ]
+    );
   };
 
   const LockedData = ({ value, color }) => (
@@ -73,7 +99,6 @@ export default function ProfileScreen({ navigation }) {
     <SafeAreaView style={[styles.container, { paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }]}>
       <StatusBar barStyle="dark-content" />
       
-      {/* HEADER SIMPLIFICADO E AJUSTADO */}
       <View style={{ 
         flexDirection: 'row', 
         alignItems: 'center', 
@@ -103,13 +128,11 @@ export default function ProfileScreen({ navigation }) {
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
         
-        {/* TITULO DA SEÇÃO */}
         <View style={{ paddingHorizontal: 25, marginTop: 10, marginBottom: 20 }}>
           <Text style={{ fontSize: 24, fontWeight: '900', color: '#1A1C2E' }}>Inteligência de Gastos</Text>
-          <Text style={{ color: '#64748B', fontSize: 13, fontWeight: '500' }}>Acompanhe sua evolução e economia.</Text>
+          <Text style={{ color: '#64748B', fontSize: 13, fontWeight: '500' }}>{userEmail}</Text>
         </View>
 
-        {/* GRID DE MÉTRICAS */}
         <View style={[styles.metricsGrid, { paddingHorizontal: 25 }]}>
           <View style={[styles.cardSmall, { backgroundColor: '#F8FAFC', borderColor: '#F1F5F9', width: '48%' }]}>
             <Text style={styles.cardEmoji}>💰</Text>
@@ -147,24 +170,14 @@ export default function ProfileScreen({ navigation }) {
               style={{ padding: 30, backgroundColor: '#F8FAFC', borderRadius: 24, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1' }}
             >
               <Text style={{ fontSize: 24, marginBottom: 10 }}>🔒</Text>
-              <Text style={{ fontSize: 13, color: '#1A1C2E', fontWeight: '800', textAlign: 'center' }}>
-                Ver ranking de mercados
-              </Text>
-              <Text style={{ fontSize: 11, color: '#64748B', textAlign: 'center', marginTop: 5 }}>
-                Assine o PRO para liberar esta análise.
-              </Text>
+              <Text style={{ fontSize: 13, color: '#1A1C2E', fontWeight: '800', textAlign: 'center' }}>Ver ranking de mercados</Text>
+              <Text style={{ fontSize: 11, color: '#64748B', textAlign: 'center', marginTop: 5 }}>Assine o PRO para liberar esta análise.</Text>
             </TouchableOpacity>
           ) : mercadosFrequentes.length > 0 ? (
             mercadosFrequentes.map((item, index) => (
               <View key={index} style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#F8FAFC',
-                padding: 18,
-                borderRadius: 20,
-                marginBottom: 12,
-                borderWidth: 1,
-                borderColor: '#F1F5F9'
+                flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC',
+                padding: 18, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9'
               }}>
                 <View style={{ 
                   width: 40, height: 40, borderRadius: 12, backgroundColor: '#FFF',
@@ -188,11 +201,32 @@ export default function ProfileScreen({ navigation }) {
           )}
         </View>
 
-        {/* BANNER PRO MELHORADO */}
+        {/* SEÇÃO DE CONTA E LOGOUT */}
+        <View style={{ paddingHorizontal: 25, marginTop: 35 }}>
+          <Text style={{ fontSize: 13, fontWeight: '900', color: '#64748B', letterSpacing: 0.5, marginBottom: 15 }}>CONTA</Text>
+          <View style={{ backgroundColor: '#F8FAFC', borderRadius: 24, padding: 5 }}>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Premium')}
+              style={[styles.rowItem, { borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingHorizontal: 20 }]}
+            >
+              <Text style={styles.rowLabel}>Plano e Faturamento</Text>
+              <Text style={styles.chevron}>→</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              onPress={handleLogout}
+              style={[styles.rowItem, { paddingHorizontal: 20 }]}
+            >
+              <Text style={[styles.rowLabel, { color: '#EF4444' }]}>Sair da Conta</Text>
+              <Text style={{ color: '#EF4444', fontSize: 18 }}>🚪</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {!isPremium && (
           <TouchableOpacity 
             onPress={() => navigation.navigate('Paywall')}
-            style={[styles.premiumBanner, { marginHorizontal: 25, marginTop: 30, padding: 20, borderRadius: 24, backgroundColor: '#1A1C2E' }]}
+            style={{ marginHorizontal: 25, marginTop: 30, padding: 20, borderRadius: 24, backgroundColor: '#1A1C2E' }}
           >
             <Text style={{ color: '#46C68E', fontWeight: '900', fontSize: 16 }}>Desbloquear Inteligência 💎</Text>
             <Text style={{ color: '#FFF', fontSize: 12, marginTop: 5, opacity: 0.8 }}>
@@ -200,25 +234,6 @@ export default function ProfileScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
         )}
-
-        {/* STATS GERAIS */}
-        <View style={{ paddingHorizontal: 25, marginTop: 35 }}>
-          <Text style={{ fontSize: 13, fontWeight: '900', color: '#64748B', letterSpacing: 0.5, marginBottom: 15 }}>CONFIGURAÇÕES</Text>
-          <View style={{ backgroundColor: '#F8FAFC', borderRadius: 24, padding: 5 }}>
-            <View style={[styles.rowItem, { borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingHorizontal: 20 }]}>
-              <Text style={styles.rowLabel}>Listas Completadas</Text>
-              <Text style={{ fontWeight: '800', color: '#1A1C2E' }}>{history.length}</Text>
-            </View>
-            
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('Paywall')}
-              style={[styles.rowItem, { paddingHorizontal: 20 }]}
-            >
-              <Text style={styles.rowLabel}>Gerenciar Assinatura</Text>
-              <Text style={styles.chevron}>→</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
       </ScrollView>
       <Footer hideProfileButton={true} />
