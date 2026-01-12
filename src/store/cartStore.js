@@ -14,23 +14,30 @@ export const useCartStore = create(
 
       uploadBackup: async () => {
         try {
+          // 1. Checa se é PRO pelo RevenueCat
           const customerInfo = await Purchases.getCustomerInfo();
           if (customerInfo.entitlements.active['RISCAÊ Pro'] === undefined) {
             return "PAYWALL";
           }
-          const userId = customerInfo.originalAppUserId;
+
+          // 2. Pega o usuário logado no Supabase
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return "LOGIN_REQUIRED";
+
           const { lists, items, history } = get();
+          
+          // 3. Salva usando o ID do Supabase (Segurança total)
           const { error } = await supabase
             .from('backups')
             .upsert({ 
-              user_id: userId, 
+              user_id: user.id, // ID REAL DO USUÁRIO
               data: { lists, items, history },
               updated_at: new Date().toISOString() 
-            }, { onConflict: 'user_id' });
+            });
+
           if (error) throw error;
           return "SUCCESS";
         } catch (e) {
-          console.error("Erro no Upload:", e);
           return "ERROR";
         }
       },
