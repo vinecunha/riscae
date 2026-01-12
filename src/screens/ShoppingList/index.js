@@ -239,7 +239,7 @@ export default function ShoppingList({ route, navigation }) {
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 11, color: '#0369A1', fontWeight: '900' }}>
                 {isPayingMore 
-                  ? `🔥 Você economizaria R$ ${diff.toFixed(2)} aqui!` 
+                  ? `🔥 Você economizaria R$ ${diff.toFixed(2)} por item aqui!` 
                   : "💡 Menor preço detectado para este item!"}
               </Text>
               <Text style={{ fontSize: 9, color: '#0EA5E9', fontWeight: '600' }}>Toque para revelar valor e mercado</Text>

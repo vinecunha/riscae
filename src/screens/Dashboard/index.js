@@ -11,7 +11,9 @@ import {
   TouchableWithoutFeedback,
   Share,
   Alert,
-  Image
+  Image,
+  SafeAreaView,
+  StatusBar
 } from 'react-native';
 import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
@@ -134,200 +136,189 @@ export default function Dashboard({ navigation }) {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={[styles.container, { flex: 1, justifyContent: 'space-between' }]}>
-        <View style={{ flex: 1 }}>
-          <View style={styles.header}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View style={{ flex: 1 }}>
-                <Image source={require('../../assets/logo.png')} style={{ width: 85, height: 35, marginBottom: 2 }} resizeMode="contain" />
-                
-                <TouchableOpacity 
-                  onPress={() => navigation.navigate('Premium')}
-                  style={{ 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
-                    backgroundColor: isPremium ? 'rgba(255, 215, 0, 0.2)' : '#F1F5F9',
-                    paddingHorizontal: 6,
-                    paddingVertical: 3,
-                    borderRadius: 6,
-                    alignSelf: 'flex-start',
-                    marginTop: 2,
-                    borderWidth: isPremium ? 0.5 : 0,
-                    borderColor: '#dd0'
-                  }}
-                >
-                  <Text style={{ fontSize: 9, marginRight: 3 }}>{isPremium ? '👑' : '⚪'}</Text>
-                  <Text style={{ 
-                    fontSize: 8, 
-                    fontWeight: '900', 
-                    color: isPremium ? '#505700' : '#64748B' 
-                  }}>
-                    {isPremium ? 'ASSINATURA PRO' : 'VERSÃO GRATUITA'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={{ 
-                flexDirection: 'row', 
-                backgroundColor: '#FFF', 
-                padding: 4, 
-                borderRadius: 14,
-                gap: 4,
-                alignItems: 'center',
-                elevation: 1,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.05,
-                shadowRadius: 2
-              }}>
-                <TouchableOpacity 
-                  onPress={() => navigation.navigate('ScanReceipt')} 
-                  style={{ width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Text style={{ fontSize: 18 }}>📷</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  onPress={() => navigation.navigate('Backup')} 
-                  style={{ width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: isPremium ? '#E8F7F0' : 'transparent' }}
-                >
-                  <Text style={{ fontSize: 18 }}>☁️</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  onPress={() => navigation.navigate('History')} 
-                  style={{ width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Text style={{ fontSize: 18 }}>🕒</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  onPress={() => setImportModalVisible(true)} 
-                  style={{ backgroundColor: '#1A1C2E', width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Text style={{ fontSize: 16 }}>📥</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
-          <FlatList 
-            data={sortedLists}
-            keyExtractor={item => item.id}
-            contentContainerStyle={{ paddingHorizontal: 5, paddingBottom: 150, paddingTop: 10 }}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => {
-              const listItems = items.filter(i => i.listId === item.id);
-              const isComplete = listItems.length > 0 && listItems.every(i => i.completed);
-
-              return (
-                <Swipeable renderRightActions={() => renderRightActions(item.id)} overshootRight={false} onSwipeableWillOpen={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        <StatusBar barStyle="dark-content" />
+        <View style={[styles.container, { flex: 1, justifyContent: 'space-between', paddingTop: Platform.OS === 'android' ? 10 : 0 }]}>
+          
+          <View style={{ flex: 1 }}>
+            <View style={{ paddingHorizontal: 5, paddingTop: 15, paddingBottom: 10 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View>
+                  <Image source={require('../../assets/logo.png')} style={{ width: 90, height: 35 }} resizeMode="contain" />
                   <TouchableOpacity 
-                    style={[styles.listCard, { flexDirection: 'row', alignItems: 'center', padding: 20, marginBottom: 15 }, isComplete && { borderColor: '#46C68E', borderWidth: 1 }]}
-                    activeOpacity={0.7}
-                    onLongPress={() => openEditModal(item)}
-                    onPress={() => {
-                      if (isComplete) {
-                        Alert.alert("Lista Concluída! 🎉", "O que deseja fazer?", [
-                          { text: "Ver Itens", onPress: () => navigation.navigate('Items', { listId: item.id, listName: item.name }) },
-                          { text: "Finalizar Agora", onPress: () => navigation.navigate('Items', { listId: item.id, autoFinish: true }) }
-                        ]);
-                      } else {
-                        navigation.navigate('Items', { listId: item.id, listName: item.name });
-                      }
+                    onPress={() => navigation.navigate('Premium')}
+                    style={{ 
+                      flexDirection: 'row', 
+                      alignItems: 'center', 
+                      backgroundColor: isPremium ? '#FFF9E6' : '#F1F5F9',
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 8,
+                      marginTop: 8,
+                      alignSelf: 'flex-start',
+                      borderWidth: isPremium ? 1 : 0,
+                      borderColor: '#FFD700'
                     }}
                   >
-                    <View style={{ width: 45, height: 45, backgroundColor: isComplete ? '#E8F7F0' : '#F1F5F9', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 15 }}>
-                      <Text style={{ fontSize: 20 }}>{isComplete ? '✅' : '📋'}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.listName, { marginBottom: 2 }, isComplete && { color: '#46C68E' }]}>{item.name}</Text>
-                      <Text style={[styles.label, { fontSize: 12 }]}>{isComplete ? "PRONTA PARA FINALIZAR" : `Total: R$ ${item.total?.toFixed(2) || "0.00"}`}</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => handleExport(item)} style={{ alignItems: 'center', paddingLeft: 10 }}>
-                      <Text style={{ fontSize: 8, fontWeight: '900', color: '#94A3B8', marginBottom: 4 }}>EXPORTAR</Text>
-                      <Text style={{ fontSize: 18 }}>📤</Text>
-                    </TouchableOpacity>
+                    <Text style={{ fontSize: 10, marginRight: 4 }}>{isPremium ? '👑' : '⚪'}</Text>
+                    <Text style={{ fontSize: 9, fontWeight: '900', color: isPremium ? '#B8860B' : '#64748B' }}>
+                      {isPremium ? 'RISCAÊ PRO' : 'PLANO FREE'}
+                    </Text>
                   </TouchableOpacity>
-                </Swipeable>
-              );
-            }}
-          />
-        </View>
-
-        <TouchableOpacity style={[styles.fab, { backgroundColor: '#46C68E', bottom: 120 }]} onPress={() => { setListName(''); setModalVisible(true); }}>
-          <Text style={{ color: '#FFF', fontSize: 35, fontWeight: '300' }}>+</Text>
-        </TouchableOpacity>
-        <Footer />
-
-        <Modal visible={modalVisible} transparent animationType="slide">
-          <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-            <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(26, 28, 46, 0.8)' }}>
-              <TouchableWithoutFeedback>
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                  <View style={{ backgroundColor: '#FFF', padding: 25, borderTopLeftRadius: 35, borderTopRightRadius: 35, paddingBottom: 40 }}>
-                    <View style={{ width: 40, height: 5, backgroundColor: '#E2E8F0', borderRadius: 10, alignSelf: 'center', marginBottom: 20 }} />
-                    <Text style={[styles.listName, { fontSize: 20, textAlign: 'center' }]}>Novo Planejamento</Text>
-                    <TextInput style={{ backgroundColor: '#F8FAFC', padding: 18, borderRadius: 18, marginTop: 20, fontSize: 16, color: '#1A1C2E', borderWidth: 1, borderColor: '#F1F5F9' }} placeholder="Ex: Rancho do Mês" autoFocus value={listName} onChangeText={setListName} />
-                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
-                      <TouchableOpacity style={{ flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 15, borderRadius: 15, alignItems: 'center' }} onPress={() => setModalVisible(false)}>
-                        <Text style={{ color: '#64748B', fontWeight: '700', fontSize: 13 }}>CANCELAR</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={{ flex: 1.5, backgroundColor: '#46C68E', paddingVertical: 15, borderRadius: 15, alignItems: 'center' }} onPress={handleCreateList}>
-                        <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>CRIAR LISTA</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </KeyboardAvoidingView>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
-
-        <Modal visible={editModalVisible} transparent animationType="fade">
-          <TouchableWithoutFeedback onPress={() => setEditModalVisible(false)}>
-            <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(26, 28, 46, 0.8)', padding: 20 }}>
-              <TouchableWithoutFeedback>
-                <View style={{ backgroundColor: '#FFF', padding: 25, borderRadius: 30 }}>
-                  <Text style={[styles.listName, { fontSize: 18, textAlign: 'center' }]}>Editar Nome da Lista</Text>
-                  <TextInput style={{ backgroundColor: '#F8FAFC', padding: 18, borderRadius: 18, marginTop: 20, fontSize: 16, color: '#1A1C2E', borderWidth: 1, borderColor: '#F1F5F9' }} value={listName} onChangeText={setListName} autoFocus />
-                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
-                    <TouchableOpacity style={{ flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 15, borderRadius: 15, alignItems: 'center' }} onPress={() => setEditModalVisible(false)}>
-                      <Text style={{ color: '#64748B', fontWeight: '700', fontSize: 13 }}>CANCELAR</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={{ flex: 1.5, backgroundColor: '#1A1C2E', paddingVertical: 15, borderRadius: 15, alignItems: 'center' }} onPress={handleUpdateName}>
-                      <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>SALVAR</Text>
-                    </TouchableOpacity>
-                  </View>
                 </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
 
-        <Modal visible={importModalVisible} transparent animationType="fade">
-          <TouchableWithoutFeedback onPress={() => setImportModalVisible(false)}>
-            <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(26, 28, 46, 0.8)' }}>
-              <TouchableWithoutFeedback>
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                  <View style={{ backgroundColor: '#FFF', padding: 25, borderTopLeftRadius: 35, borderTopRightRadius: 35, paddingBottom: 40 }}>
-                    <Text style={[styles.listName, { fontSize: 20, textAlign: 'center' }]}>Importar Lista</Text>
-                    <TextInput style={{ backgroundColor: '#F8FAFC', padding: 15, borderRadius: 18, marginTop: 20, fontSize: 11, borderWidth: 1, borderColor: '#F1F5F9', height: 120, textAlignVertical: 'top', color: '#64748B' }} placeholder="Cole o código aqui..." multiline value={importCode} onChangeText={setImportCode} />
+                <View style={{ 
+                  flexDirection: 'row', 
+                  backgroundColor: '#FFF', 
+                  borderRadius: 20, 
+                  padding: 6,
+                  elevation: 4,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  gap: 2
+                }}>
+                  <TouchableOpacity onPress={() => navigation.navigate('ScanReceipt')} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 18 }}>📷</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => navigation.navigate('History')} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 18 }}>🕒</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 18 }}>👤</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => setImportModalVisible(true)} 
+                    style={{ backgroundColor: '#1A1C2E', width: 40, height: 40, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginLeft: 4 }}
+                  >
+                    <Text style={{ fontSize: 16 }}>📥</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            <FlatList 
+              data={sortedLists}
+              keyExtractor={item => item.id}
+              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 150, paddingTop: 15 }}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const listItems = items.filter(i => i.listId === item.id);
+                const isComplete = listItems.length > 0 && listItems.every(i => i.completed);
+
+                return (
+                  <Swipeable renderRightActions={() => renderRightActions(item.id)} overshootRight={false} onSwipeableWillOpen={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
+                    <TouchableOpacity 
+                      style={[styles.listCard, { flexDirection: 'row', alignItems: 'center', padding: 18, marginBottom: 12, borderRadius: 24, backgroundColor: '#FFF' }, isComplete && { borderColor: '#46C68E', borderWidth: 1.5 }]}
+                      activeOpacity={0.7}
+                      onLongPress={() => openEditModal(item)}
+                      onPress={() => {
+                        if (isComplete) {
+                          Alert.alert("Lista Concluída! 🎉", "O que deseja fazer?", [
+                            { text: "Ver Itens", onPress: () => navigation.navigate('Items', { listId: item.id, listName: item.name }) },
+                            { text: "Finalizar Agora", onPress: () => navigation.navigate('Items', { listId: item.id, autoFinish: true }) }
+                          ]);
+                        } else {
+                          navigation.navigate('Items', { listId: item.id, listName: item.name });
+                        }
+                      }}
+                    >
+                      <View style={{ width: 48, height: 48, backgroundColor: isComplete ? '#E8F7F0' : '#F1F5F9', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 15 }}>
+                        <Text style={{ fontSize: 22 }}>{isComplete ? '✅' : '📋'}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.listName, { fontSize: 16, fontWeight: '800' }, isComplete && { color: '#46C68E' }]}>{item.name}</Text>
+                        <Text style={{ fontSize: 12, color: '#94A3B8', fontWeight: '600', marginTop: 2 }}>
+                          {isComplete ? "PRONTA PARA FINALIZAR" : `Total: R$ ${item.total?.toFixed(2) || "0.00"}`}
+                        </Text>
+                      </View>
+                      <TouchableOpacity onPress={() => handleExport(item)} style={{ padding: 10 }}>
+                        <Text style={{ fontSize: 20 }}>📤</Text>
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  </Swipeable>
+                );
+              }}
+            />
+          </View>
+
+          <TouchableOpacity style={[styles.fab, { backgroundColor: '#46C68E', bottom: 120, width: 65, height: 65, borderRadius: 22, elevation: 8, shadowOpacity: 0.3 }]} onPress={() => { setListName(''); setModalVisible(true); }}>
+            <Text style={{ color: '#FFF', fontSize: 40, fontWeight: '200' }}>+</Text>
+          </TouchableOpacity>
+          
+          <Footer />
+
+          {/* MODALS MANTIDOS CONFORME SOLICITADO */}
+          <Modal visible={modalVisible} transparent animationType="slide">
+            <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+              <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(26, 28, 46, 0.8)' }}>
+                <TouchableWithoutFeedback>
+                  <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                    <View style={{ backgroundColor: '#FFF', padding: 25, borderTopLeftRadius: 35, borderTopRightRadius: 35, paddingBottom: 40 }}>
+                      <View style={{ width: 40, height: 5, backgroundColor: '#E2E8F0', borderRadius: 10, alignSelf: 'center', marginBottom: 20 }} />
+                      <Text style={[styles.listName, { fontSize: 20, textAlign: 'center' }]}>Novo Planejamento</Text>
+                      <TextInput style={{ backgroundColor: '#F8FAFC', padding: 18, borderRadius: 18, marginTop: 20, fontSize: 16, color: '#1A1C2E', borderWidth: 1, borderColor: '#F1F5F9' }} placeholder="Ex: Rancho do Mês" autoFocus value={listName} onChangeText={setListName} />
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 15, borderRadius: 15, alignItems: 'center' }} onPress={() => setModalVisible(false)}>
+                          <Text style={{ color: '#64748B', fontWeight: '700', fontSize: 13 }}>CANCELAR</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ flex: 1.5, backgroundColor: '#46C68E', paddingVertical: 15, borderRadius: 15, alignItems: 'center' }} onPress={handleCreateList}>
+                          <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>CRIAR LISTA</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </KeyboardAvoidingView>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </Modal>
+
+          <Modal visible={editModalVisible} transparent animationType="fade">
+            <TouchableWithoutFeedback onPress={() => setEditModalVisible(false)}>
+              <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(26, 28, 46, 0.8)', padding: 20 }}>
+                <TouchableWithoutFeedback>
+                  <View style={{ backgroundColor: '#FFF', padding: 25, borderRadius: 30 }}>
+                    <Text style={[styles.listName, { fontSize: 18, textAlign: 'center' }]}>Editar Nome da Lista</Text>
+                    <TextInput style={{ backgroundColor: '#F8FAFC', padding: 18, borderRadius: 18, marginTop: 20, fontSize: 16, color: '#1A1C2E', borderWidth: 1, borderColor: '#F1F5F9' }} value={listName} onChangeText={setListName} autoFocus />
                     <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
-                      <TouchableOpacity style={{ flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 15, borderRadius: 15, alignItems: 'center' }} onPress={() => setImportModalVisible(false)}>
+                      <TouchableOpacity style={{ flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 15, borderRadius: 15, alignItems: 'center' }} onPress={() => setEditModalVisible(false)}>
                         <Text style={{ color: '#64748B', fontWeight: '700', fontSize: 13 }}>CANCELAR</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={{ flex: 1.5, backgroundColor: '#1A1C2E', paddingVertical: 15, borderRadius: 15, alignItems: 'center' }} onPress={handleImport}>
-                        <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>IMPORTAR</Text>
+                      <TouchableOpacity style={{ flex: 1.5, backgroundColor: '#1A1C2E', paddingVertical: 15, borderRadius: 15, alignItems: 'center' }} onPress={handleUpdateName}>
+                        <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>SALVAR</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
-                </KeyboardAvoidingView>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
-      </View>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </Modal>
+
+          <Modal visible={importModalVisible} transparent animationType="fade">
+            <TouchableWithoutFeedback onPress={() => setImportModalVisible(false)}>
+              <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(26, 28, 46, 0.8)' }}>
+                <TouchableWithoutFeedback>
+                  <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                    <View style={{ backgroundColor: '#FFF', padding: 25, borderTopLeftRadius: 35, borderTopRightRadius: 35, paddingBottom: 40 }}>
+                      <Text style={[styles.listName, { fontSize: 20, textAlign: 'center' }]}>Importar Lista</Text>
+                      <TextInput style={{ backgroundColor: '#F8FAFC', padding: 15, borderRadius: 18, marginTop: 20, fontSize: 11, borderWidth: 1, borderColor: '#F1F5F9', height: 120, textAlignVertical: 'top', color: '#64748B' }} placeholder="Cole o código aqui..." multiline value={importCode} onChangeText={setImportCode} />
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 15, borderRadius: 15, alignItems: 'center' }} onPress={() => setImportModalVisible(false)}>
+                          <Text style={{ color: '#64748B', fontWeight: '700', fontSize: 13 }}>CANCELAR</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ flex: 1.5, backgroundColor: '#1A1C2E', paddingVertical: 15, borderRadius: 15, alignItems: 'center' }} onPress={handleImport}>
+                          <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>IMPORTAR</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </KeyboardAvoidingView>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </Modal>
+        </View>
+      </SafeAreaView>
     </GestureHandlerRootView>
   );
 }
