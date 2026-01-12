@@ -1,37 +1,116 @@
 import { StyleSheet } from 'react-native';
-import { colors } from '../../theme/colors';
 
 export default StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 24 },
-  header: { marginTop: 40, marginBottom: 30 },
-  title: { fontSize: 28, fontWeight: '800', color: colors.primary },
-  summaryCard: { 
-    backgroundColor: colors.surface, padding: 25, borderRadius: 32, 
-    shadowColor: "#000", shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05, shadowRadius: 20, elevation: 5, marginBottom: 30
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
   },
-  label: { fontSize: 13, color: colors.textLight, fontWeight: '600', textTransform: 'uppercase' },
-  totalValue: { fontSize: 36, fontWeight: '900', color: colors.primary, marginTop: 5 },
-  listCard: { 
-    backgroundColor: colors.surface, padding: 20, borderRadius: 24, 
-    marginBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
+  listContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 160,
+    paddingTop: 10,
   },
-  listName: { fontSize: 18, fontWeight: '700', color: colors.secondary },
-  listValue: { fontSize: 16, fontWeight: '600', color: colors.secondary },
+  // Floating Action Button (FAB)
   fab: {
     position: 'absolute',
+    bottom: 115,
     right: 25,
-    bottom: 120, // Aumentado de ~30 para 120 para subir o botão
-    backgroundColor: '#1A1C2E',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
+    backgroundColor: '#46C68E',
     justifyContent: 'center',
+    alignItems: 'center',
     elevation: 8,
-    shadowColor: '#000',
+    shadowColor: '#46C68E',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    }
+    shadowRadius: 5,
+  },
+  fabIcon: {
+    color: '#FFF',
+    fontSize: 40,
+    fontWeight: '200',
+    lineHeight: 45,
+  },
+  // Estilos de Modais (Centralizados para ListModal e ImportModal)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(26, 28, 46, 0.85)',
+    justifyContent: 'center',
+    padding: 25,
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    padding: 30,
+    borderRadius: 35,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#1A1C2E',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 25,
+    lineHeight: 20,
+  },
+  // Inputs e Botões dentro dos Modais
+  input: {
+    backgroundColor: '#F1F5F9',
+    width: '100%',
+    padding: 18,
+    borderRadius: 18,
+    fontSize: 16,
+    color: '#1A1C2E',
+    marginBottom: 20,
+    fontWeight: '600',
+  },
+  btnPrimary: {
+    backgroundColor: '#1A1C2E',
+    width: '100%',
+    padding: 18,
+    borderRadius: 20,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  btnText: {
+    color: '#FFF',
+    fontWeight: '800',
+    fontSize: 15,
+    letterSpacing: 0.5,
+  },
+  btnCancel: {
+    marginTop: 20,
+    color: '#94A3B8',
+    fontWeight: '700',
+    fontSize: 14,
+    textTransform: 'uppercase',
+  },
+  // Estilos auxiliares para Cards (caso precise no Dashboard)
+  listCard: {
+    backgroundColor: '#FFF',
+    padding: 18,
+    borderRadius: 24,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#1A1C2E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  }
 });

@@ -26,6 +26,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir que o Riscaê acesse a câmera para escanear listas."
+        }
+      ],
       "expo-barcode-scanner"
     ]
   }

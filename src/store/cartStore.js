@@ -64,8 +64,41 @@ export const useCartStore = create(
       },
 
       addList: (name) => {
-        const newList = { id: Date.now().toString(), name, total: 0 };
+        const newList = { id: Date.now().toString(), name, total: 0, lockedMarket: null };
         set((state) => ({ lists: [...state.lists, newList] }));
+      },
+
+      importList: (newListData, newItemsData) => {
+        set((state) => {
+          const newListId = Date.now().toString();
+          
+          const newList = {
+            id: newListId,
+            name: newListData.name,
+            total: newListData.total || 0,
+            lockedMarket: null,
+            createdAt: new Date().toISOString()
+          };
+
+          const newItems = newItemsData.map(item => ({
+            ...item,
+            id: Math.random().toString(36).substr(2, 9) + Date.now().toString(),
+            listId: newListId,
+            completed: false // Garante que a lista comece limpa para quem importa
+          }));
+
+          return {
+            lists: [...state.lists, newList],
+            items: [...state.items, ...newItems]
+          };
+        });
+      },
+
+      createList: (name, lockedMarket = null) => {
+        const id = Date.now().toString();
+        const newList = { id, name, total: 0, lockedMarket };
+        set((state) => ({ lists: [...state.lists, newList] }));
+        return id;
       },
 
       removeList: (listId) => {
@@ -84,17 +117,18 @@ export const useCartStore = create(
       addItem: (listId, name, unitType, extraData = {}) => {
         if (!name.trim()) return;
         const newItem = {
-          id: Date.now().toString(),
+          id: Math.random().toString(36).substr(2, 9) + Date.now().toString(),
           listId,
           name,
           unitType,
-          price: 0,
-          amount: 1,
+          price: extraData.price || 0,
+          amount: extraData.amount || 1,
           completed: false,
           brand: extraData.brand || 'Genérico',
           category: extraData.category || 'Outros'
         };
         set((state) => ({ items: [...state.items, newItem] }));
+        get().calculateTotal();
       },
 
       removeItem: (itemId) => {
@@ -131,7 +165,7 @@ export const useCartStore = create(
         if (!entry) return;
 
         const newListId = Date.now().toString();
-        const newList = { id: newListId, name: `${entry.listName} (Cópia)`, total: entry.total };
+        const newList = { id: newListId, name: `${entry.listName} (Cópia)`, total: entry.total, lockedMarket: null };
         
         const newItems = entry.items.map(item => ({
           ...item,
