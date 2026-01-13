@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Platform, LogBox, AppState, View, ActivityIndicator } from 'react-native';
+import { Platform, LogBox, AppState, View, ActivityIndicator, Image, StyleSheet, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -28,9 +28,12 @@ const Stack = createStackNavigator();
 
 export default function App() {
   const { setPremium } = useAuthStore();
-  const { history, setHistory } = useCartStore(); // Para o Restore Inteligente
+  const { history, setHistory } = useCartStore();
   const [session, setSession] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
+  const fadeAnim = useState(new Animated.Value(0))[0];
+  const scaleAnim = useState(new Animated.Value(0.9))[0];
 
   const prefix = Linking.createURL('/');
   const linking = {
@@ -42,7 +45,29 @@ export default function App() {
     },
   };
 
-  // RESTORE INTELIGENTE: Busca listas da nuvem e mescla com as locais
+  // Efeito de Animação da Splash
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 4,
+        useNativeDriver: true,
+      })
+    ]).start();
+
+    // Remove a splash após 2.5 segundos
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   const syncCloudLists = async (userId) => {
     try {
       const { data, error } = await supabase
@@ -54,7 +79,6 @@ export default function App() {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        // Transforma o formato do banco para o formato do seu Store
         const cloudHistory = data.map(list => ({
           id: list.id,
           name: list.name,
@@ -64,8 +88,6 @@ export default function App() {
           date: list.created_at,
           completedCount: list.items.filter(i => i.completed).length
         }));
-
-        // Define o histórico (você pode optar por mesclar ou substituir)
         setHistory(cloudHistory);
       }
     } catch (e) {
@@ -73,12 +95,10 @@ export default function App() {
     }
   };
 
-  // BACKUP AUTOMÁTICO: Sempre que o histórico local mudar e houver sessão
   useEffect(() => {
     const performBackup = async () => {
       if (session?.user && history.length > 0) {
         try {
-          // Upsert das últimas 5 listas para poupar banda/processamento
           const recentLists = history.slice(0, 5).map(list => ({
             user_id: session.user.id,
             name: list.name || 'Lista Sem Nome',
@@ -87,16 +107,14 @@ export default function App() {
             total: list.total || 0,
             updated_at: new Date()
           }));
-
           await supabase.from('user_lists').upsert(recentLists, { onConflict: 'user_id, name' });
         } catch (e) {
           console.log("Erro no Backup Automático:", e);
         }
       }
     };
-
     performBackup();
-  }, [history]); // Dispara quando a lista local mudar
+  }, [history]);
 
   const updatePremiumStatus = async (user) => {
     if (!user) {
@@ -134,15 +152,13 @@ export default function App() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       setSession(currentSession);
-      
       if (event === 'SIGNED_IN' && currentSession?.user) {
         await updatePremiumStatus(currentSession.user);
         await syncCloudLists(currentSession.user.id);
       }
-      
       if (event === 'SIGNED_OUT') {
         setPremium(false);
-        setHistory([]); // Limpa ao sair para segurança
+        setHistory([]);
         await Purchases.logOut();
       }
     });
@@ -162,10 +178,18 @@ export default function App() {
     };
   }, []);
 
-  if (loadingAuth) {
+  // Tela de Splash Customizada
+  if (showSplash || loadingAuth) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' }}>
-        <ActivityIndicator size="large" color="#1A1C2E" />
+      <View style={styles.splashContainer}>
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], alignItems: 'center' }}>
+          <Image 
+            source={require('./src/assets/logo.png')} 
+            style={styles.logo} 
+            resizeMode="contain"
+          />
+          <ActivityIndicator size="small" color="#46C68E" style={{ marginTop: 20 }} />
+        </Animated.View>
       </View>
     );
   }
@@ -207,3 +231,16 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  splashContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC', // Cor baseada na logo (Azul Marinho)
+  },
+  logo: {
+    width: 250,
+    height: 100,
+  }
+});

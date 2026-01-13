@@ -59,15 +59,13 @@ export default function DashboardListCard({ item, items, onDelete, onEdit, onPre
               padding: 18, 
               borderRadius: 24, 
               flexDirection: 'row', 
-              alignItems: 'center', 
+              alignItems: 'flex-start', // Alinha ao topo para nomes multi-linha
               borderWidth: 1.5,
               borderColor: 'transparent',
-              // Shadow iOS
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 1 },
               shadowOpacity: 0.1,
               shadowRadius: 2,
-              // Shadow Android
               elevation: 2,
             }, 
             isComplete && { borderColor: '#46C68E' },
@@ -75,7 +73,7 @@ export default function DashboardListCard({ item, items, onDelete, onEdit, onPre
               borderColor: '#CBD5E1', 
               borderStyle: 'dashed', 
               backgroundColor: '#F8FAFC', 
-              elevation: 0, // Android bug: elevation mata o dashed
+              elevation: 0, 
               shadowOpacity: 0 
             }
           ]}
@@ -93,23 +91,38 @@ export default function DashboardListCard({ item, items, onDelete, onEdit, onPre
           </View>
 
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ fontWeight: '800', fontSize: 16, color: isEmpty ? '#94A3B8' : '#1A1C2E' }}>
+            {/* Container que permite quebra de linha mantendo a tag ao lado ou abaixo */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+              <Text 
+                style={{ 
+                  fontWeight: '800', 
+                  fontSize: 16, 
+                  color: isEmpty ? '#94A3B8' : '#1A1C2E',
+                  marginRight: 8
+                }}
+              >
                 {item.name}
               </Text>
               {isEmpty && (
-                <View style={{ backgroundColor: '#EF4444', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 8 }}>
+                <View style={{ 
+                  backgroundColor: '#EF4444', 
+                  paddingHorizontal: 6, 
+                  paddingVertical: 2, 
+                  borderRadius: 6,
+                  marginVertical: 2 // Espaço caso quebre para a linha de baixo
+                }}>
                   <Text style={{ fontSize: 8, fontWeight: '900', color: '#fff' }}>LISTA VAZIA</Text>
                 </View>
               )}
             </View>
-            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>
+            
+            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 4 }}>
               {isEmpty ? '⬅️ Arraste para excluir' : `R$ ${item.total?.toFixed(2).replace('.', ',') || "0,00"}`}
             </Text>
           </View>
 
           {!isEmpty && (
-            <TouchableOpacity onPress={handleShareText} style={{ padding: 10 }}>
+            <TouchableOpacity onPress={handleShareText} style={{ padding: 10, alignSelf: 'center' }}>
               <Text style={{ fontSize: 22 }}>📤</Text>
             </TouchableOpacity>
           )}

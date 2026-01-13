@@ -18,7 +18,7 @@ export default function ShoppingList({ route, navigation }) {
   const { listId } = route?.params || {};
   const { 
     items, addItem, confirmItem, removeItem, reopenItem, 
-    lists, finishList, updateListName, createList, removeList,
+    lists, finishList, updateListName, addList, removeList,
     syncOfflinePrices, processQueue, uploadQueue, restoreBackup 
   } = useCartStore();
   const isFocused = useIsFocused();
@@ -142,10 +142,10 @@ export default function ShoppingList({ route, navigation }) {
   };
 
   const handleSegmentItem = (item, bestDeal) => {
-    const segmentListName = `Mover: ${bestDeal.mercadoNome}`;
+    const segmentListName = `🆕 Riscaê PRO @ ${bestDeal.mercadoNome}`;
     const marketToLock = { name: bestDeal.mercadoNome, place_id: String(bestDeal.mercadoId), address: bestDeal.mercadoEndereco };
     let targetList = lists.find(l => l.name === segmentListName && !l.finished && String(l.lockedMarket?.place_id) === String(marketToLock.place_id));
-    let targetListId = targetList ? targetList.id : createList(segmentListName, marketToLock);
+    let targetListId = targetList ? targetList.id : addList(segmentListName, marketToLock);
     addItem(targetListId, item.name, item.unitType, { brand: item.brand, category: item.category, amount: item.amount, price: bestDeal.preco });
     removeItem(item.id);
   };
@@ -251,16 +251,7 @@ export default function ShoppingList({ route, navigation }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }}>
       <View style={[styles.container, { flex: 1 }]}>
-        {uploadQueue.length > 0 && (
-          <View style={{ backgroundColor: '#F59E0B', paddingVertical: 4, alignItems: 'center' }}>
-            <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>⏳ SINCRONIZANDO {uploadQueue.length} PREÇOS...</Text>
-          </View>
-        )}
-        {lastSync && !uploadQueue.length && (
-          <View style={{ backgroundColor: '#F8FAFC', paddingVertical: 4, alignItems: 'center' }}>
-            <Text style={{ color: '#94A3B8', fontSize: 8, fontWeight: '900' }}>SINC. NUVEM: {lastSync}</Text>
-          </View>
-        )}
+        
         <View style={[styles.header, { paddingTop: 10 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -294,7 +285,9 @@ export default function ShoppingList({ route, navigation }) {
             </View>
           )}
         </View>
+
         <IntelSavingsBanner />
+
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <FlatList 
             data={groupedItems} 
@@ -309,13 +302,29 @@ export default function ShoppingList({ route, navigation }) {
                 </TouchableOpacity>
               </View>
             )}
-            ListHeaderComponent={!isFocusedMode && (
-              <View style={{ padding: 20 }}>
-                <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 16, padding: 6, alignItems: 'center' }}>
-                  <TouchableOpacity onPress={() => setUnitType(prev => prev === 'UNIT' ? 'KG' : 'UNIT')} style={{ backgroundColor: '#1A1C2E', paddingHorizontal: 12, height: 44, borderRadius: 12, justifyContent: 'center', marginRight: 5 }}><Text style={{ color: '#FFF', fontSize: 10, fontWeight: '900' }}>{unitType === 'UNIT' ? 'UN' : 'KG'}</Text></TouchableOpacity>
-                  <TextInput style={{ flex: 1, height: 50, paddingHorizontal: 10, fontSize: 16, fontWeight: '600' }} placeholder="O que vamos comprar?" value={itemName} onChangeText={setItemName} />
-                  <TouchableOpacity onPress={() => { if(itemName.trim()) addItem(listId, itemName, unitType); setItemName(''); }} style={{ backgroundColor: '#1A1C2E', width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#FFF', fontSize: 24 }}>+</Text></TouchableOpacity>
-                </View>
+            ListHeaderComponent={(
+              <View>
+                {/* SINCRONIZAÇÃO ABAIXO DO HEADER */}
+                {uploadQueue.length > 0 && (
+                  <View style={{ backgroundColor: '#F59E0B', paddingVertical: 4, alignItems: 'center' }}>
+                    <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>⏳ SINCRONIZANDO {uploadQueue.length} PREÇOS...</Text>
+                  </View>
+                )}
+                {lastSync && !uploadQueue.length && (
+                  <View style={{ backgroundColor: '#F8FAFC', paddingVertical: 6, alignItems: 'center' }}>
+                    <Text style={{ color: '#94A3B866', fontSize: 8, fontWeight: '900' }}>BACKUP AUTOMÁTICO NA NUVEM SINCRONIZADA ÀS {lastSync}</Text>
+                  </View>
+                )}
+
+                {!isFocusedMode && (
+                  <View style={{ padding: 20 }}>
+                    <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 16, padding: 6, alignItems: 'center' }}>
+                      <TouchableOpacity onPress={() => setUnitType(prev => prev === 'UNIT' ? 'KG' : 'UNIT')} style={{ backgroundColor: '#1A1C2E', paddingHorizontal: 12, height: 44, borderRadius: 12, justifyContent: 'center', marginRight: 5 }}><Text style={{ color: '#FFF', fontSize: 10, fontWeight: '900' }}>{unitType === 'UNIT' ? 'UN' : 'KG'}</Text></TouchableOpacity>
+                      <TextInput style={{ flex: 1, height: 50, paddingHorizontal: 10, fontSize: 16, fontWeight: '600' }} placeholder="O que vamos comprar?" value={itemName} onChangeText={setItemName} />
+                      <TouchableOpacity onPress={() => { if(itemName.trim()) addItem(listId, itemName, unitType); setItemName(''); }} style={{ backgroundColor: '#1A1C2E', width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#FFF', fontSize: 24 }}>+</Text></TouchableOpacity>
+                    </View>
+                  </View>
+                )}
               </View>
             )}
             renderItem={({ item }) => item.isHeader ? 
@@ -334,6 +343,8 @@ export default function ShoppingList({ route, navigation }) {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* MODALS PERMANECEM IGUAIS */}
         <Modal visible={showSavingsModal} animationType="slide" transparent>
           <View style={{ flex: 1, backgroundColor: 'rgba(26, 28, 46, 0.95)', justifyContent: 'center', padding: 20 }}>
             <View style={{ backgroundColor: '#FFF', borderRadius: 32, padding: 30, alignItems: 'center' }}>
@@ -341,11 +352,11 @@ export default function ShoppingList({ route, navigation }) {
                 <Text style={{ fontSize: 40 }}>💡</Text>
               </View>
               <Text style={{ fontSize: 24, fontWeight: '900', color: '#1A1C2E', textAlign: 'center' }}>Oportunidade de Economia!</Text>
-              <div style={{ marginVertical: 25, alignItems: 'center', backgroundColor: '#F8FAFC', padding: 20, borderRadius: 20, width: '100%' }}>
+              <View style={{ marginVertical: 25, alignItems: 'center', backgroundColor: '#F8FAFC', padding: 20, borderRadius: 20, width: '100%' }}>
                 <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#64748B' }}>VOCÊ PODE ECONOMIZAR ATÉ</Text>
                 <Text style={{ fontSize: 36, fontWeight: '900', color: '#46C68E' }}>R$ {savingsData.total.toFixed(2)}</Text>
                 <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 5, textAlign: 'center' }}>Separando {savingsData.items.length} itens para mercados mais baratos.</Text>
-              </div>
+              </View>
               <TouchableOpacity onPress={confirmSegmentation} style={{ backgroundColor: '#46C68E', width: '100%', padding: 20, borderRadius: 20, alignItems: 'center', marginBottom: 12 }}>
                 <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 16 }}>SIM, SEPARAR E ECONOMIZAR</Text>
               </TouchableOpacity>
@@ -356,6 +367,7 @@ export default function ShoppingList({ route, navigation }) {
             </View>
           </View>
         </Modal>
+
         <Modal visible={showMarketModal} animationType="fade" transparent>
           <View style={{ flex: 1, backgroundColor: 'rgba(26, 28, 46, 0.8)', justifyContent: 'center', padding: 20 }}>
             <View style={{ backgroundColor: '#FFF', borderRadius: 30, padding: 25, maxHeight: '80%' }}>
@@ -372,6 +384,7 @@ export default function ShoppingList({ route, navigation }) {
             </View>
           </View>
         </Modal>
+
         <Modal visible={showEditModal} animationType="fade" transparent>
           <TouchableWithoutFeedback onPress={() => setShowEditModal(false)}>
             <View style={{ flex: 1, backgroundColor: 'rgba(26, 28, 46, 0.8)', justifyContent: 'center', padding: 20 }}>
