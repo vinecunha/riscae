@@ -202,6 +202,43 @@ export const useCartStore = create(
         set({ lists: updatedLists });
       },
 
+      deleteHistoryEntry: (id) => {
+        set((state) => ({ history: state.history.filter(h => h.id !== id) }));
+        get().uploadBackup(true);
+      },
+
+      clearHistory: () => {
+        set({ history: [] });
+        get().uploadBackup(true);
+      },
+
+      duplicateFromHistory: (historyId) => {
+        const entry = get().history.find(h => h.id === historyId);
+        if (!entry) return;
+
+        const newListId = Date.now().toString();
+        const newList = {
+          id: newListId,
+          name: `${entry.listName} (Cópia)`,
+          total: 0,
+          lockedMarket: null
+        };
+
+        const newItems = entry.items.map(item => ({
+          ...item,
+          id: Math.random().toString(36).substr(2, 9) + Date.now().toString(),
+          listId: newListId,
+          completed: false, // Inicia desmarcado para nova compra
+          price: 0 // Opcional: zerar preço para nova cotação
+        }));
+
+        set(state => ({
+          lists: [...state.lists, newList],
+          items: [...state.items, ...newItems]
+        }));
+        get().uploadBackup(true);
+      },
+
       finishList: async (listId, marketData) => {
         const state = get();
         const listToFinish = state.lists.find(l => l.id === listId);

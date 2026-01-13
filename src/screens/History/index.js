@@ -14,6 +14,24 @@ export default function History({ navigation }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const handleClearHistory = () => {
+    Alert.alert(
+      "Limpar Histórico Completo",
+      "Atenção, usuário RISCAÊ PRO: esta ação pode ser irreversível. Como o sistema realiza backup automático, a limpeza local refletirá na nuvem. Deseja continuar?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Limpar Tudo", 
+          onPress: () => {
+            clearHistory();
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }, 
+          style: "destructive" 
+        }
+      ]
+    );
+  };
+
   const renderRightActions = (item) => (
     <View style={styles.rightActionsContainer}>
       <TouchableOpacity 
@@ -61,7 +79,7 @@ export default function History({ navigation }) {
               <Text style={styles.subtitle}>Suas compras finalizadas</Text>
             </View>
             {history && history.length > 0 && (
-              <TouchableOpacity onPress={clearHistory}>
+              <TouchableOpacity onPress={handleClearHistory}>
                 <Text style={styles.clearButtonText}>LIMPAR TUDO</Text>
               </TouchableOpacity>
             )}
@@ -115,7 +133,6 @@ export default function History({ navigation }) {
                 style={styles.card}
               >
                 <View style={styles.cardHeader}>
-                  {/* Container de texto com flex: 1 para ocupar o espaço disponível e empurrar o badge */}
                   <View style={{ flex: 1, marginRight: 10 }}>
                     <Text style={styles.listName} numberOfLines={1} ellipsizeMode="tail">
                       {item.listName}
@@ -123,7 +140,6 @@ export default function History({ navigation }) {
                     <Text style={styles.dateText}>{item.date}</Text>
                   </View>
                   
-                  {/* O badge agora fica fixo à direita sem ser empurrado para fora */}
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>VER CUPOM</Text>
                   </View>

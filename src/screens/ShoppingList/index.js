@@ -19,7 +19,7 @@ export default function ShoppingList({ route, navigation }) {
   const { 
     items, addItem, confirmItem, removeItem, reopenItem, 
     lists, finishList, updateListName, addList, removeList,
-    syncOfflinePrices, processQueue, uploadQueue, restoreBackup 
+    syncOfflinePrices, processQueue, restoreBackup, uploadQueue 
   } = useCartStore();
   const isFocused = useIsFocused();
   
@@ -37,7 +37,6 @@ export default function ShoppingList({ route, navigation }) {
   const [bestPrices, setBestPrices] = useState({});
   const [isPremium, setIsPremium] = useState(false);
   const [isFocusedMode, setIsFocusedMode] = useState(false);
-  const [onlyEssentials, setOnlyEssentials] = useState(false);
   const [lastSync, setLastSync] = useState(null);
 
   const currentList = lists.find(l => l.id === listId);
@@ -45,7 +44,6 @@ export default function ShoppingList({ route, navigation }) {
 
   const groupedItems = useMemo(() => {
     let listToGroup = [...filteredItems];
-    if (onlyEssentials) listToGroup = listToGroup.filter(i => i.isEssential || !i.completed);
     const sorted = listToGroup.sort((a, b) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1;
       return (a.category || 'Outros').localeCompare(b.category || 'Outros');
@@ -63,7 +61,7 @@ export default function ShoppingList({ route, navigation }) {
       itemsWithHeaders.push(item);
     });
     return itemsWithHeaders;
-  }, [filteredItems, onlyEssentials]);
+  }, [filteredItems]);
 
   const syncData = async () => {
     await processQueue();
@@ -130,7 +128,7 @@ export default function ShoppingList({ route, navigation }) {
         const key = entry.nome_item.toLowerCase().trim();
         if (!cheapestMap[key]) {
           cheapestMap[key] = { 
-            preco: entry.preco, 
+            preco: Number(entry.preco), 
             mercadoNome: entry.mercados?.nome, 
             mercadoId: String(entry.mercados_id), 
             mercadoEndereco: entry.mercados?.endereco 
@@ -152,24 +150,36 @@ export default function ShoppingList({ route, navigation }) {
 
   const handleFinalizeWithCheck = () => {
     if (!selectedMarket) { setShowMarketModal(true); fetchMarketsOSM(); return; }
-    const itemsToSegment = filteredItems.filter(item => {
+    
+    // LOGICA DE INSISTENCIA: Força o modal se houver qualquer economia detectada nos itens concluídos
+    const itemsWithSavings = filteredItems.filter(item => {
       const bestDeal = bestPrices[item.name.toLowerCase().trim()];
       if (!bestDeal || !item.completed) return false;
+      
       const isDifferentMarket = String(bestDeal.mercadoId) !== String(selectedMarket.place_id);
-      const isMoreExpensive = item.price > bestDeal.preco;
+      const isMoreExpensive = Number(item.price) > Number(bestDeal.preco);
+      
       return isDifferentMarket && isMoreExpensive;
     });
-    if (itemsToSegment.length > 0) {
-      const total = itemsToSegment.reduce((acc, item) => {
+
+    if (itemsWithSavings.length > 0) {
+      const totalSaving = itemsWithSavings.reduce((acc, item) => {
         const bestDeal = bestPrices[item.name.toLowerCase().trim()];
-        return acc + ((item.price - bestDeal.preco) * item.amount);
+        const diff = Number(item.price) - Number(bestDeal.preco);
+        return acc + (diff * (Number(item.amount) || 1));
       }, 0);
-      setSavingsData({ total, items: itemsToSegment });
-      setShowSavingsModal(true);
-    } else {
-      finishList(listId, selectedMarket);
-      navigation.navigate('Dashboard');
+
+      // Se a economia for maior que 1 centavo, interrompe a finalização e exibe o modal
+      if (totalSaving >= 0.01) {
+        setSavingsData({ total: totalSaving, items: itemsWithSavings });
+        setShowSavingsModal(true);
+        return; // Interrompe aqui para o modal aparecer
+      }
     }
+
+    // Se não houver economia, finaliza normalmente
+    finishList(listId, selectedMarket);
+    navigation.navigate('Dashboard');
   };
 
   const confirmSegmentation = () => {
@@ -187,9 +197,9 @@ export default function ShoppingList({ route, navigation }) {
     filteredItems.forEach(item => {
       const bestDeal = bestPrices[item.name.toLowerCase().trim()];
       if (bestDeal) {
-        const userPrice = item.price || 0;
-        if (userPrice > bestDeal.preco) total += (userPrice - bestDeal.preco) * item.amount;
-        else if (userPrice === 0) total += 0.50 * item.amount;
+        const userPrice = Number(item.price) || 0;
+        if (userPrice > bestDeal.preco) total += (userPrice - bestDeal.preco) * (Number(item.amount) || 1);
+        else if (userPrice === 0) total += 0.50 * (Number(item.amount) || 1);
       }
     });
     return total;
@@ -218,14 +228,14 @@ export default function ShoppingList({ route, navigation }) {
     if (isFocusedMode) return null;
     const bestDeal = bestPrices[item.name.toLowerCase().trim()];
     if (!bestDeal) return <View style={{ marginBottom: 10 }} />;
-    const isPayingMore = item.completed && item.price > bestDeal.preco;
+    const isPayingMore = item.completed && Number(item.price) > Number(bestDeal.preco);
     if (isPayingMore) return (
       <View style={{ paddingHorizontal: 20, marginBottom: 15 }}>
         <TouchableOpacity 
           onPress={() => Alert.alert("Mover Item?", `Deseja mover "${item.name}"?`, [{text: "Não"}, {text: "Sim", onPress: () => handleSegmentItem(item, bestDeal)}])} 
           style={{ backgroundColor: '#FEF2F2', padding: 12, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: '#EF4444' }}
         >
-          <Text style={{ fontSize: 11, color: '#991B1B', fontWeight: '900' }}>⚠️ R$ {((item.price - bestDeal.preco) * item.amount).toFixed(2)} A MAIS!</Text>
+          <Text style={{ fontSize: 11, color: '#991B1B', fontWeight: '900' }}>⚠️ R$ {((Number(item.price) - Number(bestDeal.preco)) * (Number(item.amount) || 1)).toFixed(2)} A MAIS!</Text>
           <Text style={{ fontSize: 10, color: '#B91C1C' }}>No {bestDeal.mercadoNome} é R$ {bestDeal.preco.toFixed(2)}. Toque para mover ➔</Text>
         </TouchableOpacity>
       </View>
@@ -251,7 +261,6 @@ export default function ShoppingList({ route, navigation }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }}>
       <View style={[styles.container, { flex: 1 }]}>
-        
         <View style={[styles.header, { paddingTop: 10 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -266,7 +275,6 @@ export default function ShoppingList({ route, navigation }) {
             </View>
             <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 6 }}>
               <TouchableOpacity onPress={() => setIsFocusedMode(!isFocusedMode)} style={{ backgroundColor: isFocusedMode ? '#1A1C2E' : '#F1F5F9', paddingHorizontal: 8, height: 32, borderRadius: 8, justifyContent: 'center' }}><Text style={{ color: isFocusedMode ? '#FFF' : '#1A1C2E', fontSize: 8, fontWeight: '900' }}>{isFocusedMode ? '⚡ RÁPIDO' : '📱 NORMAL'}</Text></TouchableOpacity>
-              <TouchableOpacity onPress={() => setOnlyEssentials(!onlyEssentials)} style={{ backgroundColor: onlyEssentials ? '#EF4444' : '#F1F5F9', paddingHorizontal: 8, height: 32, borderRadius: 8, justifyContent: 'center' }}><Text style={{ color: onlyEssentials ? '#FFF' : '#1A1C2E', fontSize: 8, fontWeight: '900' }}>{onlyEssentials ? '⭐ CRÍTICOS' : '📑 TUDO'}</Text></TouchableOpacity>
               <TouchableOpacity onPress={() => { setShowMarketModal(true); fetchMarketsOSM(); }} style={{ backgroundColor: selectedMarket ? '#F0FDF4' : '#1A1C2E', paddingHorizontal: 8, height: 32, borderRadius: 8, borderWidth: 1, borderColor: selectedMarket ? '#46C68E' : 'transparent', maxWidth: 100, flexShrink: 1, justifyContent: 'center' }}><Text style={{ color: selectedMarket ? '#46C68E' : '#FFF', fontSize: 8, fontWeight: '900' }} numberOfLines={1}>{selectedMarket ? `📍 ${selectedMarket.name.toUpperCase()}` : '📍 ONDE?'}</Text></TouchableOpacity>
             </View>
           </View>
@@ -304,7 +312,6 @@ export default function ShoppingList({ route, navigation }) {
             )}
             ListHeaderComponent={(
               <View>
-                {/* SINCRONIZAÇÃO ABAIXO DO HEADER */}
                 {uploadQueue.length > 0 && (
                   <View style={{ backgroundColor: '#F59E0B', paddingVertical: 4, alignItems: 'center' }}>
                     <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>⏳ SINCRONIZANDO {uploadQueue.length} PREÇOS...</Text>
@@ -336,6 +343,7 @@ export default function ShoppingList({ route, navigation }) {
             }
           />
         </KeyboardAvoidingView>
+
         <View style={{ padding: 20, backgroundColor: '#FFF' }}>
           <TouchableOpacity onPress={handleFinalizeWithCheck} style={{ backgroundColor: '#46C68E', padding: 18, borderRadius: 20, alignItems: 'center' }}>
             <Text style={{ color: '#FFF', fontWeight: '900' }}>
@@ -344,7 +352,6 @@ export default function ShoppingList({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* MODALS PERMANECEM IGUAIS */}
         <Modal visible={showSavingsModal} animationType="slide" transparent>
           <View style={{ flex: 1, backgroundColor: 'rgba(26, 28, 46, 0.95)', justifyContent: 'center', padding: 20 }}>
             <View style={{ backgroundColor: '#FFF', borderRadius: 32, padding: 30, alignItems: 'center' }}>
