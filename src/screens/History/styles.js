@@ -134,9 +134,23 @@ export default StyleSheet.create({
   },
   duplicateButton: {
     backgroundColor: '#46C68E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '95%',
+    marginTop: 4,
+    marginHorizontal: 5,
+    borderRadius: 16
   },
   deleteButton: {
-    backgroundColor: '#FF7675',
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '95%',
+    marginTop: 4,
+    marginHorizontal: 5,
+    borderRadius: 16
   },
   actionText: {
     color: '#FFF',

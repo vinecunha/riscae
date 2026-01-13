@@ -18,8 +18,8 @@ export default function ShoppingList({ route, navigation }) {
   const { listId } = route?.params || {};
   const { 
     items, addItem, confirmItem, removeItem, reopenItem, 
-    lists, finishList, updateListName, createList,
-    syncOfflinePrices, processQueue, uploadQueue 
+    lists, finishList, updateListName, createList, removeList,
+    syncOfflinePrices, processQueue, uploadQueue, restoreBackup 
   } = useCartStore();
   const isFocused = useIsFocused();
   
@@ -38,6 +38,7 @@ export default function ShoppingList({ route, navigation }) {
   const [isPremium, setIsPremium] = useState(false);
   const [isFocusedMode, setIsFocusedMode] = useState(false);
   const [onlyEssentials, setOnlyEssentials] = useState(false);
+  const [lastSync, setLastSync] = useState(null);
 
   const currentList = lists.find(l => l.id === listId);
   const filteredItems = items.filter(i => i.listId === listId);
@@ -64,10 +65,17 @@ export default function ShoppingList({ route, navigation }) {
     return itemsWithHeaders;
   }, [filteredItems, onlyEssentials]);
 
+  const syncData = async () => {
+    await processQueue();
+    await restoreBackup(true);
+    const now = new Date();
+    setLastSync(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+  };
+
   useEffect(() => { 
     if (isFocused) {
       checkPremiumStatus();
-      processQueue(); 
+      syncData();
     } 
   }, [isFocused]);
 
@@ -88,7 +96,7 @@ export default function ShoppingList({ route, navigation }) {
     const result = await syncOfflinePrices(names);
     setIsSyncingOffline(false);
     if (result === "SUCCESS") {
-      Alert.alert("Modo Offline", "Preços sincronizados. Você pode ver as médias mesmo sem internet dentro do mercado.");
+      Alert.alert("Modo Offline", "Preços sincronizados!");
       fetchComparisons(); 
     }
   };
@@ -233,41 +241,44 @@ export default function ShoppingList({ route, navigation }) {
 
   const handleUpdateName = () => { if (newName.trim()) { updateListName(listId, newName); setShowEditModal(false); setNewName(''); } };
 
+  const handleDeleteList = () => {
+    Alert.alert("Excluir Lista?", "Esta lista está vazia. Deseja removê-la?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Excluir", style: "destructive", onPress: () => { removeList(listId); navigation.goBack(); } }
+    ]);
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }}>
       <View style={[styles.container, { flex: 1 }]}>
-        
         {uploadQueue.length > 0 && (
           <View style={{ backgroundColor: '#F59E0B', paddingVertical: 4, alignItems: 'center' }}>
             <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>⏳ SINCRONIZANDO {uploadQueue.length} PREÇOS...</Text>
           </View>
         )}
-
+        {lastSync && !uploadQueue.length && (
+          <View style={{ backgroundColor: '#F8FAFC', paddingVertical: 4, alignItems: 'center' }}>
+            <Text style={{ color: '#94A3B8', fontSize: 8, fontWeight: '900' }}>SINC. NUVEM: {lastSync}</Text>
+          </View>
+        )}
         <View style={[styles.header, { paddingTop: 10 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 5 }}>
                 <Text style={styles.backText}>← Voltar</Text>
               </TouchableOpacity>
-              
               {!isFocusedMode && (
-                <TouchableOpacity 
-                  onPress={handleOfflineSync}
-                  disabled={isSyncingOffline}
-                  style={{ backgroundColor: '#F1F5F9', width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}
-                >
+                <TouchableOpacity onPress={handleOfflineSync} disabled={isSyncingOffline} style={{ backgroundColor: '#F1F5F9', width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}>
                   {isSyncingOffline ? <ActivityIndicator size="small" color="#1A1C2E" /> : <Text style={{ fontSize: 14 }}>📵</Text>}
                 </TouchableOpacity>
               )}
             </View>
-
             <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 6 }}>
               <TouchableOpacity onPress={() => setIsFocusedMode(!isFocusedMode)} style={{ backgroundColor: isFocusedMode ? '#1A1C2E' : '#F1F5F9', paddingHorizontal: 8, height: 32, borderRadius: 8, justifyContent: 'center' }}><Text style={{ color: isFocusedMode ? '#FFF' : '#1A1C2E', fontSize: 8, fontWeight: '900' }}>{isFocusedMode ? '⚡ RÁPIDO' : '📱 NORMAL'}</Text></TouchableOpacity>
               <TouchableOpacity onPress={() => setOnlyEssentials(!onlyEssentials)} style={{ backgroundColor: onlyEssentials ? '#EF4444' : '#F1F5F9', paddingHorizontal: 8, height: 32, borderRadius: 8, justifyContent: 'center' }}><Text style={{ color: onlyEssentials ? '#FFF' : '#1A1C2E', fontSize: 8, fontWeight: '900' }}>{onlyEssentials ? '⭐ CRÍTICOS' : '📑 TUDO'}</Text></TouchableOpacity>
               <TouchableOpacity onPress={() => { setShowMarketModal(true); fetchMarketsOSM(); }} style={{ backgroundColor: selectedMarket ? '#F0FDF4' : '#1A1C2E', paddingHorizontal: 8, height: 32, borderRadius: 8, borderWidth: 1, borderColor: selectedMarket ? '#46C68E' : 'transparent', maxWidth: 100, flexShrink: 1, justifyContent: 'center' }}><Text style={{ color: selectedMarket ? '#46C68E' : '#FFF', fontSize: 8, fontWeight: '900' }} numberOfLines={1}>{selectedMarket ? `📍 ${selectedMarket.name.toUpperCase()}` : '📍 ONDE?'}</Text></TouchableOpacity>
             </View>
           </View>
-
           {!isFocusedMode && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
               <View style={{ flex: 1, marginRight: 10 }}>
@@ -283,11 +294,21 @@ export default function ShoppingList({ route, navigation }) {
             </View>
           )}
         </View>
-
         <IntelSavingsBanner />
-
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <FlatList data={groupedItems} keyExtractor={item => item.id}
+          <FlatList 
+            data={groupedItems} 
+            keyExtractor={item => item.id}
+            ListEmptyComponent={(
+              <View style={{ padding: 40, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 40, marginBottom: 20 }}>🛒</Text>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#1A1C2E', textAlign: 'center' }}>Sua lista está vazia!</Text>
+                <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginTop: 8, paddingHorizontal: 20 }}>Adicione itens abaixo ou exclua esta lista se não for mais usá-la.</Text>
+                <TouchableOpacity onPress={handleDeleteList} style={{ marginTop: 25, paddingVertical: 10, paddingHorizontal: 20, backgroundColor: '#FEF2F2', borderRadius: 12 }}>
+                  <Text style={{ color: '#EF4444', fontWeight: '800', fontSize: 11 }}>EXCLUIR ESTA LISTA</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             ListHeaderComponent={!isFocusedMode && (
               <View style={{ padding: 20 }}>
                 <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 16, padding: 6, alignItems: 'center' }}>
@@ -306,7 +327,6 @@ export default function ShoppingList({ route, navigation }) {
             }
           />
         </KeyboardAvoidingView>
-
         <View style={{ padding: 20, backgroundColor: '#FFF' }}>
           <TouchableOpacity onPress={handleFinalizeWithCheck} style={{ backgroundColor: '#46C68E', padding: 18, borderRadius: 20, alignItems: 'center' }}>
             <Text style={{ color: '#FFF', fontWeight: '900' }}>
@@ -314,7 +334,6 @@ export default function ShoppingList({ route, navigation }) {
             </Text>
           </TouchableOpacity>
         </View>
-
         <Modal visible={showSavingsModal} animationType="slide" transparent>
           <View style={{ flex: 1, backgroundColor: 'rgba(26, 28, 46, 0.95)', justifyContent: 'center', padding: 20 }}>
             <View style={{ backgroundColor: '#FFF', borderRadius: 32, padding: 30, alignItems: 'center' }}>
@@ -322,11 +341,11 @@ export default function ShoppingList({ route, navigation }) {
                 <Text style={{ fontSize: 40 }}>💡</Text>
               </View>
               <Text style={{ fontSize: 24, fontWeight: '900', color: '#1A1C2E', textAlign: 'center' }}>Oportunidade de Economia!</Text>
-              <View style={{ marginVertical: 25, alignItems: 'center', backgroundColor: '#F8FAFC', padding: 20, borderRadius: 20, width: '100%' }}>
+              <div style={{ marginVertical: 25, alignItems: 'center', backgroundColor: '#F8FAFC', padding: 20, borderRadius: 20, width: '100%' }}>
                 <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#64748B' }}>VOCÊ PODE ECONOMIZAR ATÉ</Text>
                 <Text style={{ fontSize: 36, fontWeight: '900', color: '#46C68E' }}>R$ {savingsData.total.toFixed(2)}</Text>
                 <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 5, textAlign: 'center' }}>Separando {savingsData.items.length} itens para mercados mais baratos.</Text>
-              </View>
+              </div>
               <TouchableOpacity onPress={confirmSegmentation} style={{ backgroundColor: '#46C68E', width: '100%', padding: 20, borderRadius: 20, alignItems: 'center', marginBottom: 12 }}>
                 <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 16 }}>SIM, SEPARAR E ECONOMIZAR</Text>
               </TouchableOpacity>
@@ -337,7 +356,6 @@ export default function ShoppingList({ route, navigation }) {
             </View>
           </View>
         </Modal>
-
         <Modal visible={showMarketModal} animationType="fade" transparent>
           <View style={{ flex: 1, backgroundColor: 'rgba(26, 28, 46, 0.8)', justifyContent: 'center', padding: 20 }}>
             <View style={{ backgroundColor: '#FFF', borderRadius: 30, padding: 25, maxHeight: '80%' }}>
@@ -354,7 +372,6 @@ export default function ShoppingList({ route, navigation }) {
             </View>
           </View>
         </Modal>
-
         <Modal visible={showEditModal} animationType="fade" transparent>
           <TouchableWithoutFeedback onPress={() => setShowEditModal(false)}>
             <View style={{ flex: 1, backgroundColor: 'rgba(26, 28, 46, 0.8)', justifyContent: 'center', padding: 20 }}>

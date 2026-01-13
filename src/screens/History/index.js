@@ -23,7 +23,6 @@ export default function History({ navigation }) {
           Alert.alert("Sucesso", "Lista duplicada para o seu Dashboard!");
         }}
       >
-        <Text style={{ fontSize: 20 }}>🔄</Text>
         <Text style={styles.actionText}>REPETIR</Text>
       </TouchableOpacity>
 
@@ -44,7 +43,6 @@ export default function History({ navigation }) {
           );
         }}
       >
-        <Text style={{ fontSize: 20 }}>🗑️</Text>
         <Text style={styles.actionText}>APAGAR</Text>
       </TouchableOpacity>
     </View>

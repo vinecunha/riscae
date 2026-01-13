@@ -11,9 +11,9 @@ export const useCartStore = create(
       lists: [],
       items: [],
       history: [],
-      // NOVOS CAMPOS PARA OFFLINE
       offlinePrices: {}, 
       uploadQueue: [],
+      lastSyncedAt: null,
 
       syncOfflinePrices: async (itemNames) => {
         try {
@@ -36,7 +36,7 @@ export const useCartStore = create(
             return "SUCCESS";
           }
         } catch (e) {
-          console.error("Erro ao sincronizar preços offline:", e);
+          console.error(e);
           return "ERROR";
         }
       },
@@ -49,110 +49,75 @@ export const useCartStore = create(
           const { error } = await supabase.from('historico_precos').insert(uploadQueue);
           if (!error) {
             set({ uploadQueue: [] });
-            console.log("Fila de upload processada com sucesso!");
           }
         } catch (e) {
-          console.log("Ainda sem conexão para subir a fila.");
+          console.log(e);
         }
       },
 
-      uploadBackup: async () => {
+      uploadBackup: async (isSilent = false) => {
         try {
           const customerInfo = await Purchases.getCustomerInfo();
-          if (customerInfo.entitlements.active['RISCAÊ Pro'] === undefined) {
-            return "PAYWALL";
-          }
+          if (customerInfo.entitlements.active['RISCAÊ Pro'] === undefined) return "PAYWALL";
+
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return "LOGIN_REQUIRED";
+
           const { lists, items, history } = get();
+          const now = new Date().toISOString();
+
           const { error } = await supabase
             .from('backups')
             .upsert({ 
               user_id: user.id,
               data: { lists, items, history },
-              updated_at: new Date().toISOString() 
+              updated_at: now 
             });
+
           if (error) throw error;
+          set({ lastSyncedAt: now });
           return "SUCCESS";
         } catch (e) {
           return "ERROR";
         }
       },
 
-      restoreBackup: async () => {
+      restoreBackup: async (isSilent = false) => {
         try {
           const customerInfo = await Purchases.getCustomerInfo();
-          if (customerInfo.entitlements.active['RISCAÊ Pro'] === undefined) {
-            return "PAYWALL";
-          }
-          const userId = customerInfo.originalAppUserId;
+          if (customerInfo.entitlements.active['RISCAÊ Pro'] === undefined) return "PAYWALL";
+
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return "LOGIN_REQUIRED";
+
           const { data, error } = await supabase
             .from('backups')
-            .select('data')
-            .eq('user_id', userId)
+            .select('data, updated_at')
+            .eq('user_id', user.id)
             .maybeSingle();
+
           if (error) throw error;
+
           if (data && data.data) {
+            const localLastSync = get().lastSyncedAt;
+            
+            if (isSilent && localLastSync && new Date(data.updated_at) <= new Date(localLastSync)) {
+              return "ALREADY_UPDATED";
+            }
+
             set({ 
               lists: data.data.lists || [], 
               items: data.data.items || [], 
-              history: data.data.history || [] 
+              history: data.data.history || [],
+              lastSyncedAt: data.updated_at
             });
             return "SUCCESS";
           }
           return "NO_BACKUP";
         } catch (e) {
-          console.error("Erro na Restauração:", e);
+          console.error(e);
           return "ERROR";
         }
-      },
-
-      addList: (name) => {
-        const newList = { id: Date.now().toString(), name, total: 0, lockedMarket: null };
-        set((state) => ({ lists: [...state.lists, newList] }));
-      },
-
-      importList: (newListData, newItemsData) => {
-        set((state) => {
-          const newListId = Date.now().toString();
-          const newList = {
-            id: newListId,
-            name: newListData.name,
-            total: newListData.total || 0,
-            lockedMarket: null,
-            createdAt: new Date().toISOString()
-          };
-          const newItems = newItemsData.map(item => ({
-            ...item,
-            id: Math.random().toString(36).substr(2, 9) + Date.now().toString(),
-            listId: newListId,
-            completed: false
-          }));
-          return {
-            lists: [...state.lists, newList],
-            items: [...state.items, ...newItems]
-          };
-        });
-      },
-
-      createList: (name, lockedMarket = null) => {
-        const id = Date.now().toString();
-        const newList = { id, name, total: 0, lockedMarket };
-        set((state) => ({ lists: [...state.lists, newList] }));
-        return id;
-      },
-
-      removeList: (listId) => {
-        set((state) => ({
-          lists: state.lists.filter((l) => l.id !== listId),
-          items: state.items.filter((i) => i.listId !== listId),
-        }));
-      },
-
-      updateListName: (listId, newName) => {
-        set((state) => ({
-          lists: state.lists.map((l) => (l.id === listId ? { ...l, name: newName } : l)),
-        }));
       },
 
       addItem: (listId, name, unitType, extraData = {}) => {
@@ -170,18 +135,13 @@ export const useCartStore = create(
         };
         set((state) => ({ items: [...state.items, newItem] }));
         get().calculateTotal();
+        get().uploadBackup(true); 
       },
 
       removeItem: (itemId) => {
         set((state) => ({ items: state.items.filter((i) => i.id !== itemId) }));
         get().calculateTotal();
-      },
-
-      reopenItem: (itemId) => {
-        set((state) => ({
-          items: state.items.map((i) => i.id === itemId ? { ...i, completed: false } : i),
-        }));
-        get().calculateTotal();
+        get().uploadBackup(true);
       },
 
       confirmItem: (itemId, price, amount) => {
@@ -189,6 +149,47 @@ export const useCartStore = create(
           items: state.items.map((i) => i.id === itemId ? { ...i, price, amount, completed: true } : i),
         }));
         get().calculateTotal();
+        get().uploadBackup(true);
+      },
+
+      reopenItem: (itemId) => {
+        set((state) => ({
+          items: state.items.map((i) => i.id === itemId ? { ...i, completed: false } : i),
+        }));
+        get().calculateTotal();
+        get().uploadBackup(true);
+      },
+
+      addList: (name, lockedMarket = null) => {
+        const id = Date.now().toString();
+        const newList = { id, name, total: 0, lockedMarket };
+        set((state) => ({ lists: [...state.lists, newList] }));
+        get().uploadBackup(true);
+        return id;
+      },
+
+      importList: (newList, newItems) => {
+        set((state) => ({
+          lists: [...state.lists, newList],
+          items: [...state.items, ...newItems]
+        }));
+        get().calculateTotal();
+        get().uploadBackup(true);
+      },
+
+      removeList: (listId) => {
+        set((state) => ({
+          lists: state.lists.filter((l) => l.id !== listId),
+          items: state.items.filter((i) => i.listId !== listId),
+        }));
+        get().uploadBackup(true);
+      },
+
+      updateListName: (listId, newName) => {
+        set((state) => ({
+          lists: state.lists.map((l) => (l.id === listId ? { ...l, name: newName } : l)),
+        }));
+        get().uploadBackup(true);
       },
 
       calculateTotal: () => {
@@ -199,44 +200,6 @@ export const useCartStore = create(
           return { ...list, total };
         });
         set({ lists: updatedLists });
-      },
-
-      duplicateFromHistory: (historyId) => {
-        const entry = get().history.find(h => h.id === historyId);
-        if (!entry) return;
-        const newListId = Date.now().toString();
-        const newList = { id: newListId, name: `${entry.listName} (Cópia)`, total: entry.total, lockedMarket: null };
-        const newItems = entry.items.map(item => ({
-          ...item,
-          id: Math.random().toString(36).substr(2, 9),
-          listId: newListId,
-          completed: false
-        }));
-        set((state) => ({
-          lists: [...state.lists, newList],
-          items: [...state.items, ...newItems]
-        }));
-      },
-
-      deleteHistoryEntry: (id) => {
-        set((state) => ({
-          history: state.history.filter((h) => h.id !== id),
-        }));
-      },
-
-      clearHistory: () => {
-        Alert.alert(
-          "Limpar Histórico",
-          "Deseja apagar permanentemente todo o seu histórico de compras?",
-          [
-            { text: "Cancelar", style: "cancel" },
-            { 
-              text: "Limpar Tudo", 
-              style: "destructive", 
-              onPress: () => set({ history: [] }) 
-            }
-          ]
-        );
       },
 
       finishList: async (listId, marketData) => {
@@ -279,13 +242,11 @@ export const useCartStore = create(
             endereco: marketData.address
           }, { onConflict: 'osm_id' });
 
-          const { error } = await supabase.from('historico_precos').insert(priceHistory);
-          if (error) throw error;
-
+          await supabase.from('historico_precos').insert(priceHistory);
         } catch (error) {
-          console.log("Erro de conexão. Salvando preços na fila offline.");
           set((state) => ({ uploadQueue: [...state.uploadQueue, ...priceHistory] }));
         }
+        get().uploadBackup(true);
       }
     }),
     {
