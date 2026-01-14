@@ -38,6 +38,10 @@ export default function ShoppingList({ route, navigation }) {
   const [isPremium, setIsPremium] = useState(false);
   const [isFocusedMode, setIsFocusedMode] = useState(false);
   const [lastSync, setLastSync] = useState(null);
+  const [sortType, setSortType] = useState('distance'); // 'distance' ou 'alpha'
+  
+  const [suggestions, setSuggestions] = useState([]);
+  const [allKnownItems, setAllKnownItems] = useState([]);
 
   const currentList = lists.find(l => l.id === listId);
   const filteredItems = items.filter(i => i.listId === listId);
@@ -68,7 +72,27 @@ export default function ShoppingList({ route, navigation }) {
     await restoreBackup(true);
     const now = new Date();
     setLastSync(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+    fetchGlobalSuggestions();
   };
+
+  const fetchGlobalSuggestions = async () => {
+    const { data } = await supabase.from('historico_precos').select('nome_item');
+    if (data) {
+      const uniqueNames = [...new Set(data.map(item => item.nome_item))];
+      setAllKnownItems(uniqueNames);
+    }
+  };
+
+  useEffect(() => {
+    if (itemName.trim().length > 1) {
+      const filtered = allKnownItems.filter(name => 
+        name.toLowerCase().includes(itemName.toLowerCase())
+      ).slice(0, 5);
+      setSuggestions(filtered);
+    } else {
+      setSuggestions([]);
+    }
+  }, [itemName, allKnownItems]);
 
   useEffect(() => { 
     if (isFocused) {
@@ -99,6 +123,17 @@ export default function ShoppingList({ route, navigation }) {
     }
   };
 
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   const fetchMarketsOSM = async () => {
     if (currentList?.lockedMarket) return;
     setIsLoadingMarkets(true);
@@ -107,15 +142,28 @@ export default function ShoppingList({ route, navigation }) {
       if (status !== 'granted') return;
       let location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=supermarket&lat=${latitude}&lon=${longitude}&bounded=1&viewbox=${longitude - 0.045},${latitude + 0.045},${longitude + 0.045},${latitude - 0.045}&limit=15`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=supermarket&lat=${latitude}&lon=${longitude}&bounded=1&viewbox=${longitude - 0.045},${latitude + 0.045},${longitude + 0.045},${latitude - 0.045}&limit=100`;
       const response = await fetch(url, { headers: { 'User-Agent': 'RiscaE_App' } });
       const data = await response.json();
-      setNearbyMarkets(data.map(m => ({
+      
+      const mapped = data.map(m => ({
         name: m.display_name.split(',')[0],
         place_id: String(m.place_id),
-        address: m.display_name.split(',').slice(1, 3).join(',')
-      })));
+        address: m.display_name.split(',').slice(1, 3).join(','),
+        distance: calculateDistance(latitude, longitude, parseFloat(m.lat), parseFloat(m.lon))
+      }));
+
+      sortMarkets(mapped, sortType);
     } catch (error) { console.error(error); } finally { setIsLoadingMarkets(false); }
+  };
+
+  const sortMarkets = (list, type) => {
+    const sorted = [...list].sort((a, b) => {
+      if (type === 'distance') return a.distance - b.distance;
+      return a.name.localeCompare(b.name);
+    });
+    setNearbyMarkets(sorted);
+    setSortType(type);
   };
 
   const fetchComparisons = async () => {
@@ -151,14 +199,11 @@ export default function ShoppingList({ route, navigation }) {
   const handleFinalizeWithCheck = () => {
     if (!selectedMarket) { setShowMarketModal(true); fetchMarketsOSM(); return; }
     
-    // LOGICA DE INSISTENCIA: Força o modal se houver qualquer economia detectada nos itens concluídos
     const itemsWithSavings = filteredItems.filter(item => {
       const bestDeal = bestPrices[item.name.toLowerCase().trim()];
       if (!bestDeal || !item.completed) return false;
-      
       const isDifferentMarket = String(bestDeal.mercadoId) !== String(selectedMarket.place_id);
       const isMoreExpensive = Number(item.price) > Number(bestDeal.preco);
-      
       return isDifferentMarket && isMoreExpensive;
     });
 
@@ -169,15 +214,13 @@ export default function ShoppingList({ route, navigation }) {
         return acc + (diff * (Number(item.amount) || 1));
       }, 0);
 
-      // Se a economia for maior que 1 centavo, interrompe a finalização e exibe o modal
       if (totalSaving >= 0.01) {
         setSavingsData({ total: totalSaving, items: itemsWithSavings });
         setShowSavingsModal(true);
-        return; // Interrompe aqui para o modal aparecer
+        return;
       }
     }
 
-    // Se não houver economia, finaliza normalmente
     finishList(listId, selectedMarket);
     navigation.navigate('Dashboard');
   };
@@ -318,8 +361,8 @@ export default function ShoppingList({ route, navigation }) {
                   </View>
                 )}
                 {lastSync && !uploadQueue.length && (
-                  <View style={{ backgroundColor: '#F8FAFC', paddingVertical: 6, alignItems: 'center' }}>
-                    <Text style={{ color: '#94A3B866', fontSize: 8, fontWeight: '900' }}>BACKUP AUTOMÁTICO NA NUVEM SINCRONIZADA ÀS {lastSync}</Text>
+                  <View style={{ backgroundColor: '#F8FAFC', paddingVertical: 6, alignItems: 'center'}}>
+                    <Text style={{ color: '#94A3B866', fontSize: 8, fontWeight: '900' }}>☁️ BACKUP AUTOMÁTICO NA NUVEM SINCRONIZADA ÀS {lastSync}</Text>
                   </View>
                 )}
 
@@ -330,6 +373,25 @@ export default function ShoppingList({ route, navigation }) {
                       <TextInput style={{ flex: 1, height: 50, paddingHorizontal: 10, fontSize: 16, fontWeight: '600' }} placeholder="O que vamos comprar?" value={itemName} onChangeText={setItemName} />
                       <TouchableOpacity onPress={() => { if(itemName.trim()) addItem(listId, itemName, unitType); setItemName(''); }} style={{ backgroundColor: '#1A1C2E', width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#FFF', fontSize: 24 }}>+</Text></TouchableOpacity>
                     </View>
+                    
+                    {suggestions.length > 0 && (
+                      <View style={{ backgroundColor: '#FFF', borderRadius: 12, marginTop: 5, borderWidth: 1, borderColor: '#F1F5F9', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 }}>
+                        {suggestions.map((sug, index) => (
+                          <TouchableOpacity 
+                            key={index} 
+                            style={{ padding: 15, borderBottomWidth: index === suggestions.length - 1 ? 0 : 1, borderBottomColor: '#F1F5F9' }}
+                            onPress={() => {
+                              addItem(listId, sug, unitType);
+                              setItemName('');
+                              setSuggestions([]);
+                              Keyboard.dismiss();
+                            }}
+                          >
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#1A1C2E' }}>{sug}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
@@ -378,14 +440,38 @@ export default function ShoppingList({ route, navigation }) {
         <Modal visible={showMarketModal} animationType="fade" transparent>
           <View style={{ flex: 1, backgroundColor: 'rgba(26, 28, 46, 0.8)', justifyContent: 'center', padding: 20 }}>
             <View style={{ backgroundColor: '#FFF', borderRadius: 30, padding: 25, maxHeight: '80%' }}>
-              <Text style={{ fontSize: 20, fontWeight: '900', marginBottom: 20, color: '#1A1C2E' }}>📍 Mercados Próximos</Text>
-              {isLoadingMarkets ? <ActivityIndicator color="#46C68E" size="large" /> : (
-                <FlatList data={nearbyMarkets} keyExtractor={m => m.place_id} renderItem={({ item }) => (
-                  <TouchableOpacity onPress={() => { setSelectedMarket(item); setShowMarketModal(false); }} style={{ padding: 18, backgroundColor: '#F8FAFC', borderRadius: 15, marginBottom: 10 }}>
-                    <Text style={{ fontWeight: '800', color: '#1A1C2E' }}>{item.name}</Text>
-                    <Text style={{ fontSize: 12, color: '#94A3B8' }}>{item.address}</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ fontSize: 20, fontWeight: '900', color: '#1A1C2E' }}>📍 Mercados</Text>
+                <View style={{ flexDirection: 'row', gap: 5 }}>
+                  <TouchableOpacity 
+                    onPress={() => sortMarkets(nearbyMarkets, 'distance')} 
+                    style={{ backgroundColor: sortType === 'distance' ? '#1A1C2E' : '#F1F5F9', padding: 8, borderRadius: 8 }}
+                  >
+                    <Text style={{ fontSize: 10, color: sortType === 'distance' ? '#FFF' : '#1A1C2E', fontWeight: '900' }}>PERTO</Text>
                   </TouchableOpacity>
-                )} />
+                  <TouchableOpacity 
+                    onPress={() => sortMarkets(nearbyMarkets, 'alpha')} 
+                    style={{ backgroundColor: sortType === 'alpha' ? '#1A1C2E' : '#F1F5F9', padding: 8, borderRadius: 8 }}
+                  >
+                    <Text style={{ fontSize: 10, color: sortType === 'alpha' ? '#FFF' : '#1A1C2E', fontWeight: '900' }}>A-Z</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {isLoadingMarkets ? <ActivityIndicator color="#46C68E" size="large" /> : (
+                <FlatList 
+                  data={nearbyMarkets} 
+                  keyExtractor={m => m.place_id} 
+                  renderItem={({ item }) => (
+                    <TouchableOpacity onPress={() => { setSelectedMarket(item); setShowMarketModal(false); }} style={{ padding: 18, backgroundColor: '#F8FAFC', borderRadius: 15, marginBottom: 10 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontWeight: '800', color: '#1A1C2E', flex: 1 }}>{item.name}</Text>
+                        <Text style={{ fontSize: 10, color: '#46C68E', fontWeight: '900' }}>{item.distance.toFixed(1)}km</Text>
+                      </View>
+                      <Text style={{ fontSize: 12, color: '#94A3B8' }} numberOfLines={1}>{item.address}</Text>
+                    </TouchableOpacity>
+                  )} 
+                />
               )}
               <TouchableOpacity onPress={() => setShowMarketModal(false)} style={{ marginTop: 20, alignItems: 'center' }}><Text style={{ color: '#94A3B8', fontWeight: '700' }}>CANCELAR</Text></TouchableOpacity>
             </View>

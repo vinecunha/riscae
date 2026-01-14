@@ -90,7 +90,7 @@ export default function Dashboard({ navigation }) {
         
         {lastSync && (
           <View style={{ alignItems: 'center', paddingVertical: 4, backgroundColor: '#F8FAFC' }}>
-            <Text style={{ fontSize: 8, color: '#94A3B866', fontWeight: 'bold' }}>BACKUP AUTOMÁTICO NA NUVEM SINCRONIZADA ÀS {lastSync}</Text>
+            <Text style={{ fontSize: 8, color: '#94A3B866', fontWeight: 'bold' }}>☁️ BACKUP AUTOMÁTICO NA NUVEM SINCRONIZADA ÀS {lastSync}</Text>
           </View>
         )}
 
