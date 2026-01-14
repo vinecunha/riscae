@@ -61,7 +61,7 @@ export default StyleSheet.create({
   itemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    marginBottom: 5,
   },
   itemName: {
     fontSize: 12,
